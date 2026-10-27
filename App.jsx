@@ -3,13 +3,14 @@ import { db } from './firebase';
 import { collection, addDoc, onSnapshot, updateDoc, doc, query, orderBy } from 'firebase/firestore';
 import { 
   AlertTriangle, CheckCircle, Clock, FileText, PlusCircle, 
-  Search, ShieldAlert, FileCode, ChevronRight, X, AlertCircle
+  Search, ShieldAlert, FileCode, ChevronRight, X, Edit3
 } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('criticas');
   const [items, setItems] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [filterText, setFilterText] = useState('');
 
   // Formulário Estado Inicial
@@ -31,15 +32,36 @@ export default function App() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleOpenNewModal = () => {
+    setEditingId(null);
+    setFormData({});
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditModal = (item) => {
+    setEditingId(item.id);
+    setFormData({ ...item });
+    setIsModalOpen(true);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await addDoc(collection(db, activeTab), {
-        ...formData,
-        status: formData.status || 'Pendente',
-        createdAt: new Date().toISOString()
-      });
+      if (editingId) {
+        // Atualizar registro existente
+        const itemRef = doc(db, activeTab, editingId);
+        const { id, ...dataToUpdate } = formData;
+        await updateDoc(itemRef, dataToUpdate);
+      } else {
+        // Criar novo registro
+        await addDoc(collection(db, activeTab), {
+          ...formData,
+          status: formData.status || 'Pendente',
+          createdAt: new Date().toISOString()
+        });
+      }
       setIsModalOpen(false);
+      setEditingId(null);
       setFormData({});
     } catch (err) {
       console.error("Erro ao salvar:", err);
@@ -149,7 +171,7 @@ export default function App() {
           </div>
 
           <button
-            onClick={() => { setFormData({}); setIsModalOpen(true); }}
+            onClick={handleOpenNewModal}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg shadow font-medium text-sm transition"
           >
             <PlusCircle className="w-5 h-5" /> Novo Registro
@@ -201,7 +223,7 @@ export default function App() {
                     </>
                   )}
                   <th className="p-4">Usuário</th>
-                  <th className="p-4">Ação</th>
+                  <th className="p-4 text-center">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -268,12 +290,19 @@ export default function App() {
                         )}
 
                         <td className="p-4 text-xs text-slate-500">{item.usuario || 'Sistema'}</td>
-                        <td className="p-4">
+                        <td className="p-4 flex items-center justify-center gap-3">
+                          <button 
+                            onClick={() => handleOpenEditModal(item)}
+                            className="flex items-center gap-1 text-xs text-amber-600 hover:text-amber-800 font-medium bg-amber-50 hover:bg-amber-100 px-2 py-1 rounded transition"
+                            title="Editar dados"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" /> Editar
+                          </button>
                           <button 
                             onClick={() => alert(`Observações: ${item.observacao || 'Nenhuma observação informada.'}`)}
                             className="text-xs text-blue-600 hover:underline"
                           >
-                            Ver Obs
+                            Obs
                           </button>
                         </td>
                       </tr>
@@ -291,7 +320,9 @@ export default function App() {
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden">
             <div className="px-6 py-4 bg-slate-900 text-white flex justify-between items-center">
-              <h3 className="font-bold text-lg">Novo Registro - {activeTab}</h3>
+              <h3 className="font-bold text-lg">
+                {editingId ? 'Editar Registro' : 'Novo Registro'} - {activeTab}
+              </h3>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
@@ -303,11 +334,11 @@ export default function App() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Crítica / Erro</label>
-                      <input required name="criticaErro" onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                      <input required name="criticaErro" value={formData.criticaErro || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Prioridade</label>
-                      <select name="prioridade" onChange={handleInputChange} className="w-full border p-2 rounded text-sm">
+                      <select name="prioridade" value={formData.prioridade || 'Baixa'} onChange={handleInputChange} className="w-full border p-2 rounded text-sm">
                         <option value="Baixa">Baixa</option>
                         <option value="Média">Média</option>
                         <option value="Alta">Alta</option>
@@ -317,28 +348,28 @@ export default function App() {
                   <div className="grid grid-cols-3 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Sistema</label>
-                      <select name="sistema" onChange={handleInputChange} className="w-full border p-2 rounded text-sm">
+                      <select name="sistema" value={formData.sistema || 'SoulMV'} onChange={handleInputChange} className="w-full border p-2 rounded text-sm">
                         <option value="SoulMV">SoulMV</option>
                         <option value="SAW">SAW</option>
                       </select>
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Empresa</label>
-                      <input name="empresa" onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                      <input name="empresa" value={formData.empresa || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Convênio</label>
-                      <input name="convenio" onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                      <input name="convenio" value={formData.convenio || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Remessa/Atendimento/Conta</label>
-                      <input name="remessa" onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                      <input name="remessa" value={formData.remessa || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Nº do Chamado</label>
-                      <input name="numChamado" onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                      <input name="numChamado" value={formData.numChamado || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
                     </div>
                   </div>
                 </>
@@ -349,31 +380,31 @@ export default function App() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Profat</label>
-                      <input required name="profat" onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                      <input required name="profat" value={formData.profat || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Descrição do Procedimento</label>
-                      <input required name="descricao" onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                      <input required name="descricao" value={formData.descricao || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Data da Solicitação (Para Alerta SLA 48h)</label>
-                      <input type="datetime-local" required name="dtSolicitacao" onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                      <input type="datetime-local" required name="dtSolicitacao" value={formData.dtSolicitacao || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Dt da Conta</label>
-                      <input type="date" name="dtConta" onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                      <input type="date" name="dtConta" value={formData.dtConta || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Empresa</label>
-                      <input name="empresa" onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                      <input name="empresa" value={formData.empresa || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Convênio</label>
-                      <input name="convenio" onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                      <input name="convenio" value={formData.convenio || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
                     </div>
                   </div>
                 </>
@@ -384,35 +415,35 @@ export default function App() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Profat</label>
-                      <input required name="profat" onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                      <input required name="profat" value={formData.profat || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Descrição do Procedimento</label>
-                      <input required name="descricao" onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                      <input required name="descricao" value={formData.descricao || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Tabela XML</label>
-                      <input name="tabelaXml" onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                      <input name="tabelaXml" value={formData.tabelaXml || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">TUSS</label>
-                      <input name="tuss" onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                      <input name="tuss" value={formData.tuss || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Anvisa</label>
-                      <input name="anvisa" onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                      <input name="anvisa" value={formData.anvisa || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Empresa</label>
-                      <input name="empresa" onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                      <input name="empresa" value={formData.empresa || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Convênio</label>
-                      <input name="convenio" onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                      <input name="convenio" value={formData.convenio || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
                     </div>
                   </div>
                 </>
@@ -420,17 +451,19 @@ export default function App() {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Usuário Responsável</label>
-                <input required name="usuario" onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="Seu nome" />
+                <input required name="usuario" value={formData.usuario || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="Seu nome" />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Observações / Conclusão</label>
-                <textarea name="observacao" onChange={handleInputChange} rows="3" className="w-full border p-2 rounded text-sm"></textarea>
+                <textarea name="observacao" value={formData.observacao || ''} onChange={handleInputChange} rows="3" className="w-full border p-2 rounded text-sm"></textarea>
               </div>
 
               <div className="pt-4 flex justify-end gap-3 border-t">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border rounded-lg text-sm text-slate-600">Cancelar</button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold">Salvar Registro</button>
+                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold">
+                  {editingId ? 'Salvar Alterações' : 'Salvar Registro'}
+                </button>
               </div>
             </form>
           </div>
