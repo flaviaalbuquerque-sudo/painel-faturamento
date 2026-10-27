@@ -419,4 +419,23 @@ export default function App() {
               )}
 
               <div>
-                <label className="
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Usuário Responsável</label>
+                <input required name="usuario" onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="Seu nome" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Observações / Conclusão</label>
+                <textarea name="observacao" onChange={handleInputChange} rows="3" className="w-full border p-2 rounded text-sm"></textarea>
+              </div>
+
+              <div className="pt-4 flex justify-end gap-3 border-t">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border rounded-lg text-sm text-slate-600">Cancelar</button>
+                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold">Salvar Registro</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
