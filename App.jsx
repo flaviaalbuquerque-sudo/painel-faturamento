@@ -197,6 +197,7 @@ export default function App() {
               <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500 font-semibold">
                 <tr>
                   <th className="p-4">Status</th>
+                  <th className="p-4">Atendimento</th>
                   {activeTab === 'criticas' && (
                     <>
                       <th className="p-4">Crítica/Erro</th>
@@ -209,6 +210,7 @@ export default function App() {
                   {activeTab === 'sem_valor' && (
                     <>
                       <th className="p-4">Profat / Descrição</th>
+                      <th className="p-4">Tabela</th>
                       <th className="p-4">Alerta SLA (48h)</th>
                       <th className="p-4">Empresa / Convênio</th>
                       <th className="p-4">Dt da Conta</th>
@@ -229,7 +231,7 @@ export default function App() {
               <tbody className="divide-y divide-slate-100">
                 {filteredItems.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="p-8 text-center text-slate-400">Nenhum registro encontrado.</td>
+                    <td colSpan="9" className="p-8 text-center text-slate-400">Nenhum registro encontrado.</td>
                   </tr>
                 ) : (
                   filteredItems.map((item) => {
@@ -246,6 +248,10 @@ export default function App() {
                             <option value="Em Andamento">Em Andamento</option>
                             <option value="Concluído">Concluído</option>
                           </select>
+                        </td>
+
+                        <td className="p-4 font-mono text-xs font-semibold text-slate-700">
+                          {item.codAtendimento || '-'}
                         </td>
 
                         {activeTab === 'criticas' && (
@@ -268,6 +274,7 @@ export default function App() {
                         {activeTab === 'sem_valor' && (
                           <>
                             <td className="p-4 font-medium text-slate-800">{item.profat} - {item.descricao}</td>
+                            <td className="p-4 text-xs font-semibold text-slate-700">{item.tabela || '-'}</td>
                             <td className="p-4">
                               {sla && (
                                 <span className={`px-2.5 py-1 text-xs rounded-md font-semibold border ${sla.color}`}>
@@ -283,7 +290,7 @@ export default function App() {
                         {activeTab === 'sem_tuss' && (
                           <>
                             <td className="p-4 font-medium text-slate-800">{item.profat} - {item.descricao}</td>
-                            <td className="p-4">{item.tuss || 'Sem TUSS'} ({item.tabelaXml})</td>
+                            <td className="p-4">{item.tuss || 'Sem TUSS'} ({item.tabelaXml || '-'})</td>
                             <td className="p-4">{item.anvisa || '-'}</td>
                             <td className="p-4">{item.empresa} / {item.convenio}</td>
                           </>
@@ -329,6 +336,13 @@ export default function App() {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+              
+              {/* Campo de Código do Atendimento (Compartilhado) */}
+              <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Cód. Atendimento</label>
+                <input name="codAtendimento" value={formData.codAtendimento || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm bg-white" placeholder="Ex: 1234567" />
+              </div>
+
               {activeTab === 'criticas' && (
                 <>
                   <div className="grid grid-cols-2 gap-4">
@@ -364,7 +378,7 @@ export default function App() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1">Remessa/Atendimento/Conta</label>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Remessa/Conta</label>
                       <input name="remessa" value={formData.remessa || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
                     </div>
                     <div>
@@ -377,27 +391,31 @@ export default function App() {
 
               {activeTab === 'sem_valor' && (
                 <>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Profat</label>
                       <input required name="profat" value={formData.profat || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
                     </div>
-                    <div>
+                    <div className="col-span-2">
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Descrição do Procedimento</label>
                       <input required name="descricao" value={formData.descricao || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Tabela</label>
+                      <input name="tabela" value={formData.tabela || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="Ex: CBHPM / Própria" />
+                    </div>
+                    <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Data da Solicitação (Para Alerta SLA 48h)</label>
                       <input type="datetime-local" required name="dtSolicitacao" value={formData.dtSolicitacao || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
                     </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Dt da Conta</label>
                       <input type="date" name="dtConta" value={formData.dtConta || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
                     </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Empresa</label>
                       <input name="empresa" value={formData.empresa || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
