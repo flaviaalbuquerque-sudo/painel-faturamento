@@ -3,8 +3,7 @@ import { db } from './firebase';
 import { collection, addDoc, onSnapshot, updateDoc, doc, query, orderBy } from 'firebase/firestore';
 import { 
   AlertTriangle, Clock, PlusCircle, Search, ShieldAlert, 
-  FileCode, ChevronRight, X, Edit3, MessageSquare, Paperclip, 
-  FileText, ExternalLink, Image as ImageIcon
+  FileCode, ChevronRight, X, Edit3, MessageSquare, Paperclip
 } from 'lucide-react';
 
 export default function App() {
@@ -34,7 +33,6 @@ export default function App() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Processar Upload de Arquivo (PNG, JPEG, PDF, DOC) em Base64
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -59,7 +57,6 @@ export default function App() {
   const handleOpenNewModal = () => {
     setEditingId(null);
     setFilePreview(null);
-    // Gerar Código Interno Único de Chamado (ex: CH-849201)
     const novoCodigoChamado = `CH-${Math.floor(100000 + Math.random() * 900000)}`;
     setFormData({ codChamado: novoCodigoChamado, prioridade: 'Média', sistema: 'SoulMV', tipoChamado: 'Falha' });
     setIsModalOpen(true);
@@ -76,12 +73,10 @@ export default function App() {
     e.preventDefault();
     try {
       if (editingId) {
-        // Atualizar registro
         const itemRef = doc(db, activeTab, editingId);
         const { id, ...dataToUpdate } = formData;
         await updateDoc(itemRef, dataToUpdate);
       } else {
-        // Criar novo registro
         await addDoc(collection(db, activeTab), {
           ...formData,
           status: formData.status || 'Pendente',
@@ -106,7 +101,6 @@ export default function App() {
     }
   };
 
-  // Cálculo de SLA (48 horas)
   const getSLAStatus = (dateString) => {
     if (!dateString) return null;
     const requestDate = new Date(dateString);
@@ -118,7 +112,7 @@ export default function App() {
     } else if (diffHours > 36) {
       return { label: 'Atenção SLA (Próximo das 48h)', color: 'bg-yellow-100 text-yellow-800 border-yellow-300' };
     }
-    return { label: 'Dentro do SLA', color: 'bg-green-100 text-green-800 border-green-300' };
+    return { label: 'Dentro do SLA', color: 'bg-emerald-100 text-emerald-800 border-emerald-300' };
   };
 
   const filteredItems = items.filter(item => 
@@ -130,20 +124,29 @@ export default function App() {
   return (
     <div className="flex h-screen bg-slate-100 text-slate-800 font-sans">
       {/* Sidebar Lateral */}
-      <aside className="w-64 bg-slate-900 text-white flex flex-col justify-between shadow-xl">
+      <aside className="w-64 bg-emerald-950 text-white flex flex-col justify-between shadow-xl">
         <div>
-          <div className="p-6 border-b border-slate-800">
-            <h1 className="text-xl font-bold text-blue-400 flex items-center gap-2">
-              <ShieldAlert className="w-6 h-6" /> Faturamento
+          {/* Header com a Logomarca Unimed */}
+          <div className="p-6 border-b border-emerald-900 flex flex-col items-start gap-2">
+            {/* LOGOMARCA UNIMED CARUARU */}
+            <img 
+              src="/logo-unimed.png" 
+              alt="Unimed Caruaru" 
+              className="h-10 w-auto object-contain mb-1"
+              onError={(e) => { e.target.style.display = 'none'; }} 
+            />
+            
+            <h1 className="text-xl font-bold text-emerald-400 flex items-center gap-2">
+              <ShieldAlert className="w-6 h-6 text-emerald-400" /> Faturamento
             </h1>
-            <p className="text-xs text-slate-400 mt-1 font-medium">Painel Operacional e Chamados Internos</p>
+            <p className="text-xs text-emerald-200/70 font-medium">Painel Operacional e Chamados Internos</p>
           </div>
 
           <nav className="p-4 space-y-2">
             <button
               onClick={() => setActiveTab('criticas')}
               className={`w-full flex items-center justify-between p-3 rounded-lg text-sm font-medium transition ${
-                activeTab === 'criticas' ? 'bg-blue-600 text-white shadow' : 'text-slate-300 hover:bg-slate-800'
+                activeTab === 'criticas' ? 'bg-emerald-600 text-white shadow' : 'text-emerald-100 hover:bg-emerald-900'
               }`}
             >
               <div className="flex items-center gap-3">
@@ -156,11 +159,11 @@ export default function App() {
             <button
               onClick={() => setActiveTab('sem_valor')}
               className={`w-full flex items-center justify-between p-3 rounded-lg text-sm font-medium transition ${
-                activeTab === 'sem_valor' ? 'bg-blue-600 text-white shadow' : 'text-slate-300 hover:bg-slate-800'
+                activeTab === 'sem_valor' ? 'bg-emerald-600 text-white shadow' : 'text-emerald-100 hover:bg-emerald-900'
               }`}
             >
               <div className="flex items-center gap-3">
-                <Clock className="w-5 h-5 text-blue-400" />
+                <Clock className="w-5 h-5 text-emerald-300" />
                 <span>Proced. Sem Valor</span>
               </div>
               <ChevronRight className="w-4 h-4 opacity-50" />
@@ -169,7 +172,7 @@ export default function App() {
             <button
               onClick={() => setActiveTab('sem_tuss')}
               className={`w-full flex items-center justify-between p-3 rounded-lg text-sm font-medium transition ${
-                activeTab === 'sem_tuss' ? 'bg-blue-600 text-white shadow' : 'text-slate-300 hover:bg-slate-800'
+                activeTab === 'sem_tuss' ? 'bg-emerald-600 text-white shadow' : 'text-emerald-100 hover:bg-emerald-900'
               }`}
             >
               <div className="flex items-center gap-3">
@@ -182,11 +185,11 @@ export default function App() {
             <button
               onClick={() => setActiveTab('chamados')}
               className={`w-full flex items-center justify-between p-3 rounded-lg text-sm font-medium transition ${
-                activeTab === 'chamados' ? 'bg-blue-600 text-white shadow' : 'text-slate-300 hover:bg-slate-800'
+                activeTab === 'chamados' ? 'bg-emerald-600 text-white shadow' : 'text-emerald-100 hover:bg-emerald-900'
               }`}
             >
               <div className="flex items-center gap-3">
-                <MessageSquare className="w-5 h-5 text-purple-400" />
+                <MessageSquare className="w-5 h-5 text-emerald-300" />
                 <span>Chamados Internos</span>
               </div>
               <ChevronRight className="w-4 h-4 opacity-50" />
@@ -194,14 +197,14 @@ export default function App() {
           </nav>
         </div>
 
-        <div className="p-4 border-t border-slate-800 text-xs text-slate-500 text-center">
-          Grupo de Trabalho Faturamento
+        <div className="p-4 border-t border-emerald-900 text-xs text-emerald-400/60 text-center font-medium">
+          Unimed Caruaru • Faturamento
         </div>
       </aside>
 
       {/* Conteúdo Principal */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Topo / Header */}
+        {/* Topo / Header Verde suave */}
         <header className="bg-white border-b px-8 py-5 flex justify-between items-center shadow-sm">
           <div>
             <h2 className="text-2xl font-bold text-slate-800">
@@ -217,7 +220,7 @@ export default function App() {
 
           <button
             onClick={handleOpenNewModal}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg shadow font-medium text-sm transition"
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg shadow font-medium text-sm transition"
           >
             <PlusCircle className="w-5 h-5" /> {activeTab === 'chamados' ? 'Abrir Novo Chamado' : 'Novo Registro'}
           </button>
@@ -311,7 +314,7 @@ export default function App() {
                         {activeTab === 'chamados' ? (
                           <>
                             <td className="p-4">
-                              <div className="font-mono text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded w-max mb-1 border border-blue-200">
+                              <div className="font-mono text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded w-max mb-1 border border-emerald-200">
                                 {item.codChamado}
                               </div>
                               <div className="font-semibold text-slate-800 text-sm">{item.tituloChamado}</div>
@@ -342,7 +345,7 @@ export default function App() {
                                   href={item.anexoUrl} 
                                   target="_blank" 
                                   rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline bg-blue-50 p-1.5 rounded border border-blue-200"
+                                  className="inline-flex items-center gap-1 text-xs text-emerald-700 hover:underline bg-emerald-50 p-1.5 rounded border border-emerald-200 font-medium"
                                   title={item.anexoNome}
                                 >
                                   <Paperclip className="w-3.5 h-3.5" /> Ver Anexo
@@ -407,14 +410,14 @@ export default function App() {
                         <td className="p-4 flex items-center justify-center gap-2">
                           <button 
                             onClick={() => handleOpenEditModal(item)}
-                            className="flex items-center gap-1 text-xs text-amber-600 hover:text-amber-800 font-medium bg-amber-50 hover:bg-amber-100 px-2 py-1 rounded transition"
+                            className="flex items-center gap-1 text-xs text-amber-700 hover:text-amber-900 font-medium bg-amber-50 hover:bg-amber-100 px-2 py-1 rounded transition"
                             title="Editar dados"
                           >
                             <Edit3 className="w-3.5 h-3.5" /> Editar
                           </button>
                           <button 
                             onClick={() => alert(`Detalhes / Descrição:\n\n${item.descritivoChamado || item.observacao || 'Sem observações adicionais.'}`)}
-                            className="text-xs text-blue-600 hover:underline px-1 py-1"
+                            className="text-xs text-emerald-700 hover:underline px-1 py-1 font-medium"
                           >
                             Detalhes
                           </button>
@@ -433,11 +436,11 @@ export default function App() {
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden">
-            <div className="px-6 py-4 bg-slate-900 text-white flex justify-between items-center">
+            <div className="px-6 py-4 bg-emerald-900 text-white flex justify-between items-center">
               <h3 className="font-bold text-lg">
                 {editingId ? 'Editar Registro' : 'Novo Registro'} - {activeTab === 'chamados' ? 'Chamado Interno' : activeTab}
               </h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setIsModalOpen(false)} className="text-emerald-200 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -447,12 +450,12 @@ export default function App() {
               {/* Formulário de Chamados Internos */}
               {activeTab === 'chamados' && (
                 <>
-                  <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl flex items-center justify-between">
+                  <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex items-center justify-between">
                     <div>
-                      <span className="text-xs font-bold text-blue-600 uppercase tracking-wide">Código do Chamado Gerado</span>
-                      <h4 className="text-2xl font-mono font-extrabold text-blue-900">{formData.codChamado}</h4>
+                      <span className="text-xs font-bold text-emerald-700 uppercase tracking-wide">Código do Chamado Gerado</span>
+                      <h4 className="text-2xl font-mono font-extrabold text-emerald-950">{formData.codChamado}</h4>
                     </div>
-                    <span className="text-xs text-blue-700 bg-blue-100 px-3 py-1 rounded-full font-semibold">Geração Automática</span>
+                    <span className="text-xs text-emerald-800 bg-emerald-200 px-3 py-1 rounded-full font-semibold">Geração Automática</span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -517,11 +520,11 @@ export default function App() {
                   </div>
 
                   {/* Upload de Anexo Opcional */}
-                  <div className="border border-dashed border-slate-300 p-4 rounded-xl bg-slate-50">
+                  <div className="border border-dashed border-emerald-300 p-4 rounded-xl bg-emerald-50/50">
                     <label className="block text-xs font-semibold text-slate-700 mb-1">Anexar Imagem (PNG/JPEG) ou Documento (PDF/DOC) (Opcional)</label>
-                    <input type="file" accept="image/png, image/jpeg, application/pdf, .doc, .docx" onChange={handleFileChange} className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
+                    <input type="file" accept="image/png, image/jpeg, application/pdf, .doc, .docx" onChange={handleFileChange} className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200 cursor-pointer" />
                     {filePreview && (
-                      <p className="mt-2 text-xs text-emerald-600 font-semibold flex items-center gap-1">
+                      <p className="mt-2 text-xs text-emerald-700 font-semibold flex items-center gap-1">
                         <Paperclip className="w-3.5 h-3.5" /> Arquivo selecionado: {filePreview}
                       </p>
                     )}
@@ -675,7 +678,7 @@ export default function App() {
 
               <div className="pt-4 flex justify-end gap-3 border-t">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border rounded-lg text-sm text-slate-600">Cancelar</button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold">
+                <button type="submit" className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold">
                   {editingId ? 'Salvar Alterações' : 'Enviar Chamado'}
                 </button>
               </div>
