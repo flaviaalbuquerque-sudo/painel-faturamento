@@ -4,15 +4,18 @@ import { collection, addDoc, onSnapshot, updateDoc, doc, query, orderBy } from '
 import { 
   AlertTriangle, Clock, PlusCircle, Search, ShieldAlert, 
   FileCode, ChevronRight, X, Edit3, MessageSquare, Paperclip,
-  Home, Send, Calendar, Filter, HelpCircle, CheckCircle2, ArrowRight,
-  Mail, MessageSquarePlus
+  Home, Send, Filter, HelpCircle, CheckCircle2, ArrowRight,
+  Mail, Eye, Download, FileText, Image as ImageIcon
 } from 'lucide-react';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('inicio'); // Padrão: Página Principal
+  const [activeTab, setActiveTab] = useState('inicio');
   const [items, setItems] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
+
+  // Modal para Visualizar Anexo
+  const [viewAnexo, setViewAnexo] = useState(null);
 
   // Estados dos Filtros Avançados
   const [filterStatus, setFilterStatus] = useState('Todos');
@@ -27,7 +30,7 @@ export default function App() {
   const [filePreview, setFilePreview] = useState(null);
 
   // Estado do Formulário de Feedback
-  const [feedback, setFeedback] = useState({ nome: '', email: '', tipo: 'Sugestão', mensagem: '' });
+  const [feedback, setFeedback] = useState({ nome: '', email: '', tipo: 'Sugestão de Melhoria', mensagem: '' });
   const [feedbackEnviado, setFeedbackEnviado] = useState(false);
 
   useEffect(() => {
@@ -48,11 +51,13 @@ export default function App() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  // Upload com limite de 700KB para caber no limite de 1MB do Firebase
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 4 * 1024 * 1024) {
-        alert("O arquivo deve ter no máximo 4MB.");
+      if (file.size > 700 * 1024) {
+        alert("O arquivo é muito grande! Por favor, selecione um arquivo de até 700KB (ou tire um print/compressão da imagem).");
+        e.target.value = "";
         return;
       }
       const reader = new FileReader();
@@ -66,6 +71,38 @@ export default function App() {
         setFilePreview(file.name);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  // Função para converter Base64 em Blob URL e abrir sem bloqueios do navegador
+  const handleOpenAnexo = (anexo) => {
+    if (!anexo || !anexo.anexoUrl) return;
+
+    if (anexo.anexoUrl.startsWith('data:')) {
+      try {
+        const arr = anexo.anexoUrl.split(',');
+        const mime = arr[0].match(/:(.*?);/)[1];
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+        const blob = new Blob([u8arr], { type: mime });
+        const blobUrl = URL.createObjectURL(blob);
+        
+        // Se for imagem, abre no modal interno. Se for documento/pdf, abre em nova guia
+        if (mime.startsWith('image/')) {
+          setViewAnexo({ url: blobUrl, nome: anexo.anexoNome, tipo: mime, raw: anexo.anexoUrl });
+        } else {
+          window.open(blobUrl, '_blank');
+        }
+      } catch (err) {
+        console.error("Erro ao processar anexo:", err);
+        alert("Não foi possível abrir o anexo.");
+      }
+    } else {
+      window.open(anexo.anexoUrl, '_blank');
     }
   };
 
@@ -104,7 +141,7 @@ export default function App() {
       setFilePreview(null);
     } catch (err) {
       console.error("Erro ao salvar:", err);
-      alert("Erro ao salvar no banco de dados.");
+      alert("Erro ao salvar no banco de dados. Verifique se a imagem anexada não é muito grande.");
     }
   };
 
@@ -138,31 +175,25 @@ export default function App() {
     return { label: 'Dentro do SLA', color: 'bg-emerald-100 text-emerald-800 border-emerald-300' };
   };
 
-  // Ordenação Estrita por Status: Pendente ➔ Em Andamento ➔ Concluído
   const statusPriority = { 'Pendente': 1, 'Em Andamento': 2, 'Concluído': 3 };
 
   const filteredAndSortedItems = items
     .filter((item) => {
-      // Filtro por Status
       if (filterStatus !== 'Todos' && (item.status || 'Pendente') !== filterStatus) return false;
 
-      // Filtro por PROFAT (Para abas sem_valor e sem_tuss)
       if (filterProfat.trim() !== '') {
         const profatMatch = String(item.profat || '').toLowerCase().includes(filterProfat.toLowerCase());
         if (!profatMatch) return false;
       }
 
-      // Filtro por Código de Chamado (Para aba chamados)
       if (filterChamado.trim() !== '') {
         const chamadoMatch = String(item.codChamado || '').toLowerCase().includes(filterChamado.toLowerCase()) ||
                              String(item.tituloChamado || '').toLowerCase().includes(filterChamado.toLowerCase());
         if (!chamadoMatch) return false;
       }
 
-      // Filtro por Sistema (Para aba chamados)
       if (filterSistema !== 'Todos' && item.sistema !== filterSistema) return false;
 
-      // Filtro por Período de Data
       if (item.createdAt) {
         const itemDate = item.createdAt.substring(0, 10);
         if (filterDateStart && itemDate < filterDateStart) return false;
@@ -281,11 +312,9 @@ export default function App() {
       {/* Conteúdo Principal */}
       <main className="flex-1 flex flex-col overflow-hidden">
         
-        {/* ==================== PÁGINA PRINCIPAL (INÍCIO) ==================== */}
+        {/* PÁGINA PRINCIPAL */}
         {activeTab === 'inicio' ? (
           <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-slate-50">
-            
-            {/* Banner de Boas-Vindas */}
             <div className="bg-gradient-to-r from-emerald-900 to-emerald-800 rounded-2xl p-8 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="space-y-3 max-w-2xl">
                 <div className="inline-flex items-center gap-2 bg-emerald-700/50 px-3 py-1 rounded-full text-xs font-semibold text-emerald-200 border border-emerald-600">
@@ -293,131 +322,68 @@ export default function App() {
                 </div>
                 <h1 className="text-3xl font-extrabold tracking-tight">Painel Operacional & Chamados Internos</h1>
                 <p className="text-emerald-100/90 text-sm leading-relaxed">
-                  Bem-vindo à central de inteligência e acompanhamento do Faturamento da Unimed Caruaru. Este painel centraliza a resolução de críticas em sistemas (SoulMV / SAW), monitoramento rigoroso de SLAs e canal direto de suporte para solicitações internas.
+                  Bem-vindo à central de inteligência e acompanhamento do Faturamento da Unimed Caruaru.
                 </p>
               </div>
               <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/10 text-center min-w-[220px]">
-                <img src="/logo-unimed.png" alt="Unimed Caruaru" className="h-12 mx-auto mb-2 object-contain filter drop-shadow" />
+                <img src="/logo-unimed.png" alt="Unimed Caruaru" className="h-12 mx-auto mb-2 object-contain filter drop-shadow" onError={(e) => e.target.style.display = 'none'} />
                 <span className="text-xs font-bold text-emerald-200 block uppercase tracking-wider">Unimed Caruaru</span>
               </div>
             </div>
 
-            {/* Atalhos Rápidos para as Páginas */}
+            {/* Atalhos Rápidos */}
             <div>
               <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
                 <ArrowRight className="w-5 h-5 text-emerald-600" /> Módulos Operacionais
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-                
-                {/* Card 1 */}
-                <div 
-                  onClick={() => setActiveTab('criticas')}
-                  className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-500 transition cursor-pointer group flex flex-col justify-between"
-                >
+                <div onClick={() => setActiveTab('criticas')} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-500 transition cursor-pointer group flex flex-col justify-between">
                   <div>
                     <div className="w-12 h-12 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                       <AlertTriangle className="w-6 h-6 text-amber-600" />
                     </div>
                     <h3 className="font-bold text-slate-800 text-lg group-hover:text-emerald-700 transition">Críticas e Erros</h3>
-                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">Acompanhamento e correção de inconsistências geradas nos sistemas SoulMV e SAW.</p>
+                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">Acompanhamento e correção de inconsistências nos sistemas SoulMV e SAW.</p>
                   </div>
                   <span className="text-xs font-bold text-emerald-600 mt-4 flex items-center gap-1 group-hover:underline">Acessar Módulo <ChevronRight className="w-3.5 h-3.5" /></span>
                 </div>
 
-                {/* Card 2 */}
-                <div 
-                  onClick={() => setActiveTab('sem_valor')}
-                  className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-500 transition cursor-pointer group flex flex-col justify-between"
-                >
+                <div onClick={() => setActiveTab('sem_valor')} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-500 transition cursor-pointer group flex flex-col justify-between">
                   <div>
                     <div className="w-12 h-12 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                       <Clock className="w-6 h-6 text-emerald-600" />
                     </div>
                     <h3 className="font-bold text-slate-800 text-lg group-hover:text-emerald-700 transition">Proced. Sem Valor</h3>
-                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">Mapeamento de procedimentos sem precificação com alerta automático de SLA de 48 horas.</p>
+                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">Mapeamento de procedimentos sem valor com alerta automático de SLA de 48 horas.</p>
                   </div>
                   <span className="text-xs font-bold text-emerald-600 mt-4 flex items-center gap-1 group-hover:underline">Acessar Módulo <ChevronRight className="w-3.5 h-3.5" /></span>
                 </div>
 
-                {/* Card 3 */}
-                <div 
-                  onClick={() => setActiveTab('sem_tuss')}
-                  className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-500 transition cursor-pointer group flex flex-col justify-between"
-                >
+                <div onClick={() => setActiveTab('sem_tuss')} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-500 transition cursor-pointer group flex flex-col justify-between">
                   <div>
                     <div className="w-12 h-12 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                       <FileCode className="w-6 h-6 text-blue-600" />
                     </div>
                     <h3 className="font-bold text-slate-800 text-lg group-hover:text-emerald-700 transition">Proced. Sem TUSS</h3>
-                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">Depara e vinculação de códigos PROFAT com tabelas XML, códigos TUSS e Anvisa.</p>
+                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">Depara de códigos PROFAT com tabelas XML, TUSS e Anvisa.</p>
                   </div>
                   <span className="text-xs font-bold text-emerald-600 mt-4 flex items-center gap-1 group-hover:underline">Acessar Módulo <ChevronRight className="w-3.5 h-3.5" /></span>
                 </div>
 
-                {/* Card 4 */}
-                <div 
-                  onClick={() => setActiveTab('chamados')}
-                  className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-500 transition cursor-pointer group flex flex-col justify-between"
-                >
+                <div onClick={() => setActiveTab('chamados')} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-500 transition cursor-pointer group flex flex-col justify-between">
                   <div>
                     <div className="w-12 h-12 rounded-lg bg-purple-50 border border-purple-200 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                       <MessageSquare className="w-6 h-6 text-purple-600" />
                     </div>
                     <h3 className="font-bold text-slate-800 text-lg group-hover:text-emerald-700 transition">Chamados Internos</h3>
-                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">Central de chamados das equipes com código único, controle por prioridade e suporte a anexos.</p>
+                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">Central de chamados com código único, prioridade e anexos.</p>
                   </div>
                   <span className="text-xs font-bold text-emerald-600 mt-4 flex items-center gap-1 group-hover:underline">Acessar Módulo <ChevronRight className="w-3.5 h-3.5" /></span>
                 </div>
-
               </div>
             </div>
 
-            {/* Resumo do Funcionamento e Objetivos */}
-            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
-              <h2 className="text-xl font-bold text-slate-800 border-b pb-3 flex items-center gap-2">
-                <HelpCircle className="w-5 h-5 text-emerald-600" /> Guia de Utilização e Objetivos do Painel
-              </h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-slate-600">
-                <div className="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                  <h4 className="font-bold text-slate-800 flex items-center gap-2 text-emerald-800">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" /> 1. Críticas e Erros (SoulMV / SAW)
-                  </h4>
-                  <p className="text-xs leading-relaxed">
-                    <strong>Objetivo:</strong> Evitar glosas e retenção de contas médicas. Ao registrar o código de atendimento, número do chamado e crítica apresentada, garantimos a tratativa ágil com as equipes de TI e auditoria.
-                  </p>
-                </div>
-
-                <div className="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                  <h4 className="font-bold text-slate-800 flex items-center gap-2 text-emerald-800">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" /> 2. Procedimentos Sem Valor
-                  </h4>
-                  <p className="text-xs leading-relaxed">
-                    <strong>Objetivo:</strong> Assegurar o correto faturamento de procedimentos sem valor cadastrado. O sistema ativa um temporizador automático de SLA (48h) a partir da data de solicitação para evitar atrasos no envio de contas aos convênios.
-                  </p>
-                </div>
-
-                <div className="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                  <h4 className="font-bold text-slate-800 flex items-center gap-2 text-emerald-800">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" /> 3. Procedimentos Sem TUSS
-                  </h4>
-                  <p className="text-xs leading-relaxed">
-                    <strong>Objetivo:</strong> Manter a padronização e depara de procedimentos junto ao padrão TISS/TUSS da ANS, correlacionando o código PROFAT com registros da Anvisa e tabelas das operadoras.
-                  </p>
-                </div>
-
-                <div className="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                  <h4 className="font-bold text-slate-800 flex items-center gap-2 text-emerald-800">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" /> 4. Chamados Internos
-                  </h4>
-                  <p className="text-xs leading-relaxed">
-                    <strong>Objetivo:</strong> Facilitar a comunicação direta dos colaboradores com a liderança do Faturamento, permitindo a abertura de chamados com código gerado na hora, definição de prioridade e anexo de evidências.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Formulário de Feedback / Sugestões (Ouvidoria Interna) */}
+            {/* Canal de Sugestões / Feedback */}
             <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm max-w-3xl">
               <div className="flex items-center gap-3 border-b pb-4 mb-4">
                 <div className="p-3 bg-emerald-100 text-emerald-800 rounded-xl">
@@ -425,13 +391,13 @@ export default function App() {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-slate-800">Canal de Sugestões, Críticas e Elogios</h3>
-                  <p className="text-xs text-slate-500">Sua opinião é fundamental para aprimorarmos nossas ferramentas operacionais.</p>
+                  <p className="text-xs text-slate-500">Envie suas observações diretamente para a liderança de faturamento.</p>
                 </div>
               </div>
 
               {feedbackEnviado && (
                 <div className="mb-4 p-3 bg-emerald-100 border border-emerald-300 text-emerald-800 rounded-lg text-xs font-semibold">
-                  ✓ Abrindo seu gerenciador de e-mail para envio da mensagem para Flávia Albuquerque!
+                  ✓ Abrindo gerenciador de e-mail para envio para Flávia Albuquerque!
                 </div>
               )}
 
@@ -446,10 +412,10 @@ export default function App() {
                     <input required type="email" value={feedback.email} onChange={(e) => setFeedback({ ...feedback, email: e.target.value })} className="w-full border p-2.5 rounded-lg text-sm" placeholder="seu.email@hospitalunimedcaruaru.com.br" />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Tipo de Mensagem *</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Tipo *</label>
                     <select value={feedback.tipo} onChange={(e) => setFeedback({ ...feedback, tipo: e.target.value })} className="w-full border p-2.5 rounded-lg text-sm bg-white">
                       <option value="Sugestão de Melhoria">Sugestão de Melhoria</option>
-                      <option value="Crítica Constructiva">Crítica</option>
+                      <option value="Crítica">Crítica</option>
                       <option value="Elogio">Elogio</option>
                     </select>
                   </div>
@@ -457,7 +423,7 @@ export default function App() {
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Sua Mensagem *</label>
-                  <textarea required rows="3" value={feedback.mensagem} onChange={(e) => setFeedback({ ...feedback, mensagem: e.target.value })} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Escreva aqui suas ideias ou comentários para o time de faturamento..."></textarea>
+                  <textarea required rows="3" value={feedback.mensagem} onChange={(e) => setFeedback({ ...feedback, mensagem: e.target.value })} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Escreva aqui..."></textarea>
                 </div>
 
                 <div className="flex justify-between items-center pt-2">
@@ -468,12 +434,10 @@ export default function App() {
                 </div>
               </form>
             </div>
-
           </div>
         ) : (
-          /* ==================== ABAS DE TABELA E FILTROS ==================== */
+          /* TABELAS E FILTROS */
           <>
-            {/* Topo / Header Verde */}
             <header className="bg-white border-b px-8 py-5 flex justify-between items-center shadow-sm">
               <div>
                 <h2 className="text-2xl font-bold text-slate-800">
@@ -495,29 +459,21 @@ export default function App() {
               </button>
             </header>
 
-            {/* Painel de Filtros Avançados */}
             <div className="p-8 flex-1 overflow-y-auto space-y-6">
               
+              {/* Filtros */}
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
                 <div className="flex items-center justify-between border-b pb-2">
                   <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-2">
-                    <Filter className="w-4 h-4 text-emerald-600" /> Filtros de Pesquisa Avançada
+                    <Filter className="w-4 h-4 text-emerald-600" /> Filtros de Pesquisa
                   </span>
-                  <button onClick={clearFilters} className="text-xs text-slate-500 hover:text-emerald-700 underline font-medium">
-                    Limpar Filtros
-                  </button>
+                  <button onClick={clearFilters} className="text-xs text-slate-500 hover:text-emerald-700 underline font-medium">Limpar Filtros</button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-1">
-                  
-                  {/* Filtro por Status */}
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 mb-1">Status</label>
-                    <select 
-                      value={filterStatus} 
-                      onChange={(e) => setFilterStatus(e.target.value)}
-                      className="w-full border p-2 rounded-lg text-sm bg-white"
-                    >
+                    <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="w-full border p-2 rounded-lg text-sm bg-white">
                       <option value="Todos">Todos os Status</option>
                       <option value="Pendente">1. Pendente</option>
                       <option value="Em Andamento">2. Em Andamento</option>
@@ -525,27 +481,15 @@ export default function App() {
                     </select>
                   </div>
 
-                  {/* Filtro por PROFAT ou Chamado */}
                   {activeTab === 'chamados' ? (
                     <>
                       <div>
                         <label className="block text-xs font-semibold text-slate-600 mb-1">Cód. Chamado / Título</label>
-                        <input 
-                          type="text" 
-                          placeholder="Ex: CH-849201" 
-                          value={filterChamado} 
-                          onChange={(e) => setFilterChamado(e.target.value)} 
-                          className="w-full border p-2 rounded-lg text-sm"
-                        />
+                        <input type="text" placeholder="Ex: CH-849201" value={filterChamado} onChange={(e) => setFilterChamado(e.target.value)} className="w-full border p-2 rounded-lg text-sm" />
                       </div>
-
                       <div>
                         <label className="block text-xs font-semibold text-slate-600 mb-1">Sistema</label>
-                        <select 
-                          value={filterSistema} 
-                          onChange={(e) => setFilterSistema(e.target.value)} 
-                          className="w-full border p-2 rounded-lg text-sm bg-white"
-                        >
+                        <select value={filterSistema} onChange={(e) => setFilterSistema(e.target.value)} className="w-full border p-2 rounded-lg text-sm bg-white">
                           <option value="Todos">Todos os Sistemas</option>
                           <option value="SoulMV">SoulMV</option>
                           <option value="EasyAudit">EasyAudit</option>
@@ -556,52 +500,34 @@ export default function App() {
                   ) : (
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Código PROFAT</label>
-                      <input 
-                        type="text" 
-                        placeholder="Pesquisar por PROFAT..." 
-                        value={filterProfat} 
-                        onChange={(e) => setFilterProfat(e.target.value)} 
-                        className="w-full border p-2 rounded-lg text-sm"
-                      />
+                      <input type="text" placeholder="Pesquisar por PROFAT..." value={filterProfat} onChange={(e) => setFilterProfat(e.target.value)} className="w-full border p-2 rounded-lg text-sm" />
                     </div>
                   )}
 
-                  {/* Filtro de Período de Data */}
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 mb-1">Data Inicial</label>
-                    <input 
-                      type="date" 
-                      value={filterDateStart} 
-                      onChange={(e) => setFilterDateStart(e.target.value)} 
-                      className="w-full border p-2 rounded-lg text-sm"
-                    />
+                    <input type="date" value={filterDateStart} onChange={(e) => setFilterDateStart(e.target.value)} className="w-full border p-2 rounded-lg text-sm" />
                   </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 mb-1">Data Final</label>
-                    <input 
-                      type="date" 
-                      value={filterDateEnd} 
-                      onChange={(e) => setFilterDateEnd(e.target.value)} 
-                      className="w-full border p-2 rounded-lg text-sm"
-                    />
+                    <input type="date" value={filterDateEnd} onChange={(e) => setFilterDateEnd(e.target.value)} className="w-full border p-2 rounded-lg text-sm" />
                   </div>
-
                 </div>
               </div>
 
-              {/* Tabela de Dados */}
+              {/* Tabela */}
               <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 <table className="w-full text-left text-sm text-slate-600">
                   <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500 font-semibold">
                     <tr>
-                      <th className="p-4">Status (Ordem Fixa)</th>
+                      <th className="p-4">Status</th>
                       {activeTab === 'chamados' ? (
                         <>
                           <th className="p-4">Código / Título</th>
                           <th className="p-4">Solicitante / Setor</th>
                           <th className="p-4">Sistema / Tipo</th>
-                          <th className="p-4">Contato (Chat / Ramal)</th>
+                          <th className="p-4">Contato</th>
                           <th className="p-4">Prioridade</th>
                           <th className="p-4 text-center">Anexo</th>
                         </>
@@ -643,7 +569,7 @@ export default function App() {
                   <tbody className="divide-y divide-slate-100">
                     {filteredAndSortedItems.length === 0 ? (
                       <tr>
-                        <td colSpan="10" className="p-8 text-center text-slate-400">Nenhum registro encontrado com os filtros selecionados.</td>
+                        <td colSpan="10" className="p-8 text-center text-slate-400">Nenhum registro encontrado.</td>
                       </tr>
                     ) : (
                       filteredAndSortedItems.map((item) => {
@@ -696,15 +622,13 @@ export default function App() {
                                 </td>
                                 <td className="p-4 text-center">
                                   {item.anexoUrl ? (
-                                    <a 
-                                      href={item.anexoUrl} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-1 text-xs text-emerald-700 hover:underline bg-emerald-50 p-1.5 rounded border border-emerald-200 font-medium"
+                                    <button 
+                                      onClick={() => handleOpenAnexo(item)}
+                                      className="inline-flex items-center gap-1 text-xs text-emerald-800 hover:bg-emerald-100 bg-emerald-50 p-1.5 rounded border border-emerald-300 font-semibold transition"
                                       title={item.anexoNome}
                                     >
-                                      <Paperclip className="w-3.5 h-3.5" /> Ver Anexo
-                                    </a>
+                                      <Paperclip className="w-3.5 h-3.5 text-emerald-600" /> Ver Anexo
+                                    </button>
                                   ) : (
                                     <span className="text-xs text-slate-400">-</span>
                                   )}
@@ -766,7 +690,6 @@ export default function App() {
                               <button 
                                 onClick={() => handleOpenEditModal(item)}
                                 className="flex items-center gap-1 text-xs text-amber-700 hover:text-amber-900 font-medium bg-amber-50 hover:bg-amber-100 px-2 py-1 rounded transition"
-                                title="Editar dados"
                               >
                                 <Edit3 className="w-3.5 h-3.5" /> Editar
                               </button>
@@ -789,6 +712,39 @@ export default function App() {
         )}
       </main>
 
+      {/* Modal para Visualizar Imagem do Anexo */}
+      {viewAnexo && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 bg-emerald-950 text-white flex justify-between items-center">
+              <h3 className="font-bold text-sm flex items-center gap-2">
+                <ImageIcon className="w-4 h-4 text-emerald-400" /> Visualizador de Anexo: {viewAnexo.nome}
+              </h3>
+              <button onClick={() => setViewAnexo(null)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-auto flex items-center justify-center bg-slate-100 flex-1">
+              <img src={viewAnexo.url} alt="Anexo do Chamado" className="max-h-[65vh] object-contain rounded border border-slate-300 shadow-md" />
+            </div>
+
+            <div className="p-4 bg-white border-t flex justify-end gap-3">
+              <a 
+                href={viewAnexo.url} 
+                download={viewAnexo.nome || 'anexo_chamado'}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition"
+              >
+                <Download className="w-4 h-4" /> Baixar Imagem
+              </a>
+              <button onClick={() => setViewAnexo(null)} className="px-4 py-2 border rounded-lg text-xs text-slate-600 font-semibold">
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal de Formulário de Cadastro/Edição */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -804,7 +760,7 @@ export default function App() {
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
               
-              {/* Formulário de Chamados Internos */}
+              {/* Form Chamados */}
               {activeTab === 'chamados' && (
                 <>
                   <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex items-center justify-between">
@@ -828,12 +784,12 @@ export default function App() {
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">Título do Chamado *</label>
-                    <input required name="tituloChamado" value={formData.tituloChamado || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm font-semibold text-slate-800" placeholder="Resumo do problema ou solicitação" />
+                    <input required name="tituloChamado" value={formData.tituloChamado || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm font-semibold text-slate-800" placeholder="Resumo da solicitação" />
                   </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">Descritivo do Chamado *</label>
-                    <textarea required name="descritivoChamado" value={formData.descritivoChamado || ''} onChange={handleInputChange} rows="4" className="w-full border p-2.5 rounded-lg text-sm" placeholder="Explique detalhadamente o que aconteceu, código de erro ou necessidade..."></textarea>
+                    <textarea required name="descritivoChamado" value={formData.descritivoChamado || ''} onChange={handleInputChange} rows="4" className="w-full border p-2.5 rounded-lg text-sm" placeholder="Explique o problema ou solicitação..."></textarea>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -877,8 +833,8 @@ export default function App() {
                   </div>
 
                   <div className="border border-dashed border-emerald-300 p-4 rounded-xl bg-emerald-50/50">
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Anexar Imagem (PNG/JPEG) ou Documento (PDF/DOC) (Opcional)</label>
-                    <input type="file" accept="image/png, image/jpeg, application/pdf, .doc, .docx" onChange={handleFileChange} className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200 cursor-pointer" />
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Anexar Imagem (PNG/JPEG) ou Documento (PDF) (Max 700KB)</label>
+                    <input type="file" accept="image/png, image/jpeg, application/pdf" onChange={handleFileChange} className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200 cursor-pointer" />
                     {filePreview && (
                       <p className="mt-2 text-xs text-emerald-700 font-semibold flex items-center gap-1">
                         <Paperclip className="w-3.5 h-3.5" /> Arquivo selecionado: {filePreview}
@@ -888,7 +844,7 @@ export default function App() {
                 </>
               )}
 
-              {/* Formulários das Outras Abas */}
+              {/* Outros Forms */}
               {activeTab !== 'chamados' && (
                 <>
                   <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
