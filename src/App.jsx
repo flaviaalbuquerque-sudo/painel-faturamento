@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from './firebase';
-import { collection, addDoc, onSnapshot, updateDoc, doc, query, orderBy } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
 import { 
   AlertTriangle, Clock, PlusCircle, ShieldAlert, 
-  FileCode, ChevronRight, X, Edit3, MessageSquare, Paperclip,
+  FileCode, ChevronRight, X, Edit3, Trash2, MessageSquare, Paperclip,
   Home, Send, Filter, ArrowRight,
   Mail, Download, Image as ImageIcon, Bell, BellRing,
   BarChart3, Activity, CheckCircle
@@ -207,6 +207,17 @@ export default function App() {
     setFormData({ ...item });
     setFilePreview(item.anexoNome || null);
     setIsModalOpen(true);
+  };
+
+  const handleDeleteItem = async (id) => {
+    if (window.confirm("Tem certeza que deseja apagar este registro do banco de dados?")) {
+      try {
+        await deleteDoc(doc(db, activeTab, id));
+      } catch (err) {
+        console.error("Erro ao apagar:", err);
+        alert("Erro ao excluir do banco de dados.");
+      }
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -925,10 +936,11 @@ export default function App() {
                                 <Edit3 className="w-3.5 h-3.5" /> Editar
                               </button>
                               <button 
-                                onClick={() => alert(`Detalhes / Observações:\n\n${item.observacao || item.descritivoChamado || 'Sem observações adicionais.'}`)}
-                                className="text-xs text-emerald-700 hover:underline px-1 py-1 font-medium"
+                                onClick={() => handleDeleteItem(item.id)}
+                                className="flex items-center gap-1 text-xs text-red-700 hover:text-red-900 font-medium bg-red-50 hover:bg-red-100 px-2 py-1 rounded transition"
+                                title="Excluir Registro"
                               >
-                                Ver Detalhes
+                                <Trash2 className="w-3.5 h-3.5" /> Excluir
                               </button>
                             </td>
                           </tr>
