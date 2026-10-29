@@ -6,8 +6,52 @@ import {
   FileCode, ChevronRight, X, Edit3, Trash2, MessageSquare, Paperclip,
   Home, Send, Filter, ArrowRight,
   Mail, Download, Image as ImageIcon, Bell, BellRing,
-  BarChart3, Activity, CheckCircle
+  BarChart3, Activity, CheckCircle, Search, History
 } from 'lucide-react';
+
+// 40 Chamados NTI higienizados para a carga inicial/biblioteca
+const CHAMADOS_NTI_INICIAIS = [
+  { codAtendimento: '', numChamado: '47862', criticaErro: 'As contas que foram colocadas em remessa somem da tela, e para encontrar a remessa precisamos procurar através de uma das contas que foram inseridas, para depois selecionar e conseguir entregar a remessa concluindo assim o processo', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '4297364', numChamado: '48162', criticaErro: 'atendimento 4297364 SADT que teve alta no dia 25/11/2025 às 11:17h, porém não consegui colocar na esteira, pois a conta não aparece', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '177287', numChamado: '48291', criticaErro: 'Ao puxar as contas sem remessa na esteira unimed Recife apareceu uma conta 177287 que não está em remessa inforando que já foi gerado xml. Conferi no SAW a guia referente ao atendimento e realmente essa conta não foi postada. Por favor verificar porque ela aparece o status marcado com xml gerado', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed Recife', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '177213', numChamado: '48316', criticaErro: 'Ocorreu um erro onde 4 contas que já estava em remessa e importada no SAW, a esteira ao puxar as contas pelo filtro sem remessa trouxe na informação e acabou atribuindo as mesmas em outra remessa. Contas: 177213, 177855, 178411, 177208.', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '48335', criticaErro: 'ao recalcular as contas está dobrando as diárias dentro da conta', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '48511', criticaErro: 'Ao puxar as contas por data, percebemos que a esteira está colocando algumas contas fora do período selecionado, o que está ocasionando o não faturamento da conta na data correta, gerando dessa forma atraso no faturamento. Por favor ajustar.', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '177654', numChamado: '50226', criticaErro: 'Opme não está aparecendo no easyaudit para as auditoras', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Tratativa: problemas operacionais (conta 177654)' },
+  { codAtendimento: '179644', numChamado: '50279', criticaErro: 'opme, divergencia na quantidade na fatura, no sistema mv.conta 179644', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '52041', criticaErro: 'Ao selecionar status sincronizar, o filtro não traz todas as contas.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '4371189', numChamado: '52356', criticaErro: 'Atendimento 4371189 conv 40, 30/12/2025 não aparece na esteira de conta, essa conta precisa passar na auditoria de enfermagem.', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Convênio 40', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '157472', numChamado: '52457', criticaErro: 'abrir a remessa 157472 conv.12 (deu erro para retirar as contas)', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Convênio 12', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '157989', numChamado: '53538', criticaErro: 'Ao tentar enviar o arquivo 157989, o sistema informa o erro de integridade.', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '55258', criticaErro: 'Erro ao gerar xml, na aba monitoração de faturamento. Usuário: Dafne.luiza', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'Dafne Luiza', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '55482', criticaErro: 'Ao tentar gerar remessa no Easy Audit, está aparecendo um erro, e não aparece a remessa no sistema, só que no Mv a remessa foi gerada.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '55723', criticaErro: 'erro no status de sincronização easy', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '62177', criticaErro: 'Divergências de valores no OPME, auditoria de enfermagem altera os materiais e não assume no Mv.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '64133', criticaErro: 'Erro ao gerar o relatório para imprimir a conta e ao fechar a conta.', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '66550', criticaErro: 'Erro ao gerar relatório 10470 no unireport.', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '70475', criticaErro: 'duplicidade na esteira de conta no Easy Audit.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '48050', criticaErro: 'Remessas duplicando no Easy Audit', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '177661', numChamado: '48784', criticaErro: 'Conta 177661 não assumiu a auditoria no mv', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '41194', criticaErro: 'Quebra de parciais automático no sistema', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Configurações do sistema' },
+  { codAtendimento: '', numChamado: '43789', criticaErro: 'Duplicidade de códigos de serviço no CEMUC', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'CEMUC', usuario: 'NTI Import', observacao: 'Configurações do sistema' },
+  { codAtendimento: '', numChamado: '43054', criticaErro: 'Solicitação de Melhorias e Correções para a Ferramenta Easy Audit', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitações de melhoria' },
+  { codAtendimento: '', numChamado: '44031', criticaErro: 'Restrição que impeça a utilização da mesma guia em dois atendimentos ambulatoriais distintos', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitações de melhoria' },
+  { codAtendimento: '', numChamado: '44378', criticaErro: 'Importação de Códigos Laboratoriais (Unilab) para Conta Hospitalar', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unilab', usuario: 'NTI Import', observacao: 'Configurações do sistema' },
+  { codAtendimento: '', numChamado: '61632', criticaErro: 'Limitação de cadastro de porte no SOUL MV', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
+  { codAtendimento: '', numChamado: '63948', criticaErro: 'realização de higienização da base de dados no sistema MV Hospitalar no cadastro do beneficiário', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
+  { codAtendimento: '', numChamado: '63958', criticaErro: 'Atualização da tabela CASSI', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'CASSI', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
+  { codAtendimento: '', numChamado: '69617', criticaErro: 'Solicitação de relatório para Jean', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
+  { codAtendimento: '', numChamado: '69690', criticaErro: 'Solicitação de lógica para o relatório 12590', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Esclarecimento da lógica do relatório 12590' },
+  { codAtendimento: '', numChamado: '70291', criticaErro: 'Insert tabelas 72 sulamerica', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'SulAmérica', usuario: 'NTI Import', observacao: 'Insert de atualização dos valores da TABELA 72 do sulamerica' },
+  { codAtendimento: '', numChamado: '70421', criticaErro: 'Solicitação de ajuste no relatório - 10470', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Relatório 10470 - unireport não esta trazendo alguns atendimentos' },
+  { codAtendimento: '', numChamado: '70903', criticaErro: 'Ajuste de todos os setores e origem para todos os usuários do faturamento', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Ajuste de setores/origens para acesso completo a contas' },
+  { codAtendimento: '', numChamado: '71048', criticaErro: 'Extração de relatório via banco para identificar inconsistências cadastrais nas tabelas de faturamento (PROFAT sem TUSS)', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Mapeamento de PROFATs sem vinculo TUSS' },
+  { codAtendimento: '', numChamado: '71086', criticaErro: 'Extração de dados via banco para mapeamento e parametrização de valores zerados ou ausentes', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Mapeamento de itens PROFAT sem preço/vigência (Link ClickUp)' },
+  { codAtendimento: '', numChamado: '71420', criticaErro: 'Dados como prescrição, evolução dos pacientes não aparece no PEP', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Inconsistência de exibição no PEP' },
+  { codAtendimento: '', numChamado: '74153', criticaErro: 'Configuração do convênio 50 na empresa 5 mv - saw', sistema: 'SAW', status: 'Em Andamento', empresa: 'Empresa 5', convenio: 'Convênio 50', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
+  { codAtendimento: '', numChamado: '82.992', criticaErro: 'Acréscimo de aba de observação de faturamento no Easy Audit', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitado via ClickUp' },
+  { codAtendimento: '', numChamado: '86.861', criticaErro: 'Solicitação de Raspberry / Estação de Trabalho', sistema: 'Hardware', status: 'Aguardando TI', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitado via ClickUp' }
+];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('inicio');
@@ -22,9 +66,12 @@ export default function App() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const previousTotalRef = useRef({});
 
+  // Controle de Histórico Dinâmico (Esconde concluídos/cancelados por padrão)
+  const [showHistory, setShowHistory] = useState(false);
+
   // Estatísticas Globais do Dashboard
   const [dashStats, setDashStats] = useState({
-    criticas: { total: 0, pendente: 0, andamento: 0, concluido: 0 },
+    criticas: { total: 0, pendente: 0, andamento: 0, aguardandoTi: 0, concluido: 0 },
     sem_valor: { total: 0, pendente: 0, andamento: 0, concluido: 0, slaEstourado: 0 },
     sem_tuss: { total: 0, pendente: 0, andamento: 0, concluido: 0, slaEstourado: 0 },
     chamados: { total: 0, pendente: 0, andamento: 0, concluido: 0, altaPrioridade: 0 }
@@ -52,10 +99,16 @@ export default function App() {
     const unsubscribes = collections.map(colName => {
       const q = query(collection(db, colName));
       return onSnapshot(q, (snapshot) => {
-        const docs = snapshot.docs.map(doc => doc.data());
+        let docs = snapshot.docs.map(doc => doc.data());
+        
+        // Se a coleção de críticas estiver vazia no Firestore, utiliza a base de chamados importados
+        if (colName === 'criticas' && docs.length === 0) {
+          docs = CHAMADOS_NTI_INICIAIS;
+        }
+
         const total = docs.length;
         const pendente = docs.filter(d => (d.status || 'Pendente') === 'Pendente' || d.status === 'Aberto').length;
-        const andamento = docs.filter(d => d.status === 'Em Andamento').length;
+        const andamento = docs.filter(d => d.status === 'Em Andamento' || d.status === 'Em andamento').length;
         const aguardandoTi = docs.filter(d => d.status === 'Aguardando TI').length;
         const concluido = docs.filter(d => d.status === 'Concluído').length;
 
@@ -105,9 +158,28 @@ export default function App() {
     const q = query(collection(db, activeTab), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setItems(data);
+      
+      // Se for a aba de críticas e ainda não houver dados no Firestore, exibe a base de 40 chamados importados
+      if (activeTab === 'criticas' && data.length === 0) {
+        const importadosFormatados = CHAMADOS_NTI_INICIAIS.map((c, idx) => ({
+          id: `nti-${idx}`,
+          ...c,
+          createdAt: new Date().toISOString()
+        }));
+        setItems(importadosFormatados);
+      } else {
+        setItems(data);
+      }
     }, (error) => {
       console.error("Erro ao buscar dados do Firebase:", error);
+      if (activeTab === 'criticas') {
+        const importadosFormatados = CHAMADOS_NTI_INICIAIS.map((c, idx) => ({
+          id: `nti-${idx}`,
+          ...c,
+          createdAt: new Date().toISOString()
+        }));
+        setItems(importadosFormatados);
+      }
     });
     return () => unsubscribe();
   }, [activeTab]);
@@ -212,7 +284,11 @@ export default function App() {
   const handleDeleteItem = async (id) => {
     if (window.confirm("Tem certeza que deseja apagar este registro do banco de dados?")) {
       try {
-        await deleteDoc(doc(db, activeTab, id));
+        if (String(id).startsWith('nti-')) {
+          setItems(prev => prev.filter(item => item.id !== id));
+        } else {
+          await deleteDoc(doc(db, activeTab, id));
+        }
       } catch (err) {
         console.error("Erro ao apagar:", err);
         alert("Erro ao excluir do banco de dados.");
@@ -224,9 +300,13 @@ export default function App() {
     e.preventDefault();
     try {
       if (editingId) {
-        const itemRef = doc(db, activeTab, editingId);
-        const { id, ...dataToUpdate } = formData;
-        await updateDoc(itemRef, dataToUpdate);
+        if (String(editingId).startsWith('nti-')) {
+          setItems(prev => prev.map(item => item.id === editingId ? { ...formData, id: editingId } : item));
+        } else {
+          const itemRef = doc(db, activeTab, editingId);
+          const { id, ...dataToUpdate } = formData;
+          await updateDoc(itemRef, dataToUpdate);
+        }
       } else {
         await addDoc(collection(db, activeTab), {
           ...formData,
@@ -246,7 +326,11 @@ export default function App() {
 
   const handleStatusChange = async (id, newStatus) => {
     try {
-      await updateDoc(doc(db, activeTab, id), { status: newStatus });
+      if (String(id).startsWith('nti-')) {
+        setItems(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item));
+      } else {
+        await updateDoc(doc(db, activeTab, id), { status: newStatus });
+      }
     } catch (err) {
       console.error("Erro ao atualizar status:", err);
     }
@@ -278,20 +362,33 @@ export default function App() {
     'Pendente': 1, 
     'Aberto': 1,
     'Em Andamento': 2, 
+    'Em andamento': 2,
     'Aguardando TI': 3,
     'Aguardando Retorno': 4,
     'Concluído': 5,
     'Cancelado': 6
   };
 
+  // Filtro Dinâmico com suporte à Biblioteca de Histórico
   const filteredAndSortedItems = items
     .filter((item) => {
-      if (filterStatus !== 'Todos' && (item.status || 'Pendente') !== filterStatus) return false;
+      const currentStatus = item.status || 'Pendente';
+      const isSearching = filterProfat.trim() !== '' || filterChamado.trim() !== '' || filterDateStart !== '' || filterDateEnd !== '';
+
+      // Oculta Concluídos/Cancelados a menos que o Histórico esteja ativo ou haja uma busca específica
+      if (!showHistory && !isSearching && filterStatus === 'Todos') {
+        if (currentStatus === 'Concluído' || currentStatus === 'Cancelado') {
+          return false;
+        }
+      }
+
+      if (filterStatus !== 'Todos' && currentStatus !== filterStatus) return false;
 
       if (filterProfat.trim() !== '') {
         const queryStr = filterProfat.toLowerCase();
         const profatMatch = String(item.profat || '').toLowerCase().includes(queryStr) ||
                             String(item.criticaErro || '').toLowerCase().includes(queryStr) ||
+                            String(item.numChamado || '').toLowerCase().includes(queryStr) ||
                             String(item.codAtendimento || '').toLowerCase().includes(queryStr);
         if (!profatMatch) return false;
       }
@@ -326,6 +423,7 @@ export default function App() {
     setFilterChamado('');
     setFilterDateStart('');
     setFilterDateEnd('');
+    setShowHistory(false);
   };
 
   const totalPendenciasGeral = dashStats.criticas.pendente + dashStats.sem_valor.pendente + dashStats.sem_tuss.pendente + dashStats.chamados.pendente;
@@ -386,7 +484,7 @@ export default function App() {
             >
               <div className="flex items-center gap-3">
                 <AlertTriangle className="w-5 h-5 text-amber-400" />
-                <span>Críticas e Erros</span>
+                <span>Críticas e Erros (NTI)</span>
               </div>
               <ChevronRight className="w-4 h-4 opacity-50" />
             </button>
@@ -490,7 +588,7 @@ export default function App() {
 
                 <div className="bg-white p-5 rounded-2xl border border-emerald-200 shadow-sm flex items-center justify-between">
                   <div>
-                    <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider block">Concluídos</span>
+                    <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider block">Concluídos (Histórico)</span>
                     <span className="text-3xl font-extrabold text-emerald-950">{totalConcluidosGeral}</span>
                     <span className="text-xs text-slate-500 block mt-1">Demandas finalizadas</span>
                   </div>
@@ -504,12 +602,13 @@ export default function App() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-2">
                   <div className="flex justify-between items-center border-b pb-2">
-                    <span className="font-bold text-xs text-slate-800">Críticas e Erros</span>
+                    <span className="font-bold text-xs text-slate-800">Críticas e Erros (Chamados NTI)</span>
                     <span className="text-xs font-mono font-bold bg-slate-100 px-2 py-0.5 rounded">{dashStats.criticas.total} total</span>
                   </div>
                   <div className="text-xs space-y-1 text-slate-600">
                     <div className="flex justify-between"><span>Pendentes:</span> <strong className="text-amber-600">{dashStats.criticas.pendente}</strong></div>
                     <div className="flex justify-between"><span>Em Andamento:</span> <strong className="text-blue-600">{dashStats.criticas.andamento}</strong></div>
+                    <div className="flex justify-between"><span>Aguardando TI:</span> <strong className="text-purple-600">{dashStats.criticas.aguardandoTi}</strong></div>
                     <div className="flex justify-between"><span>Concluídos:</span> <strong className="text-emerald-600">{dashStats.criticas.concluido}</strong></div>
                   </div>
                 </div>
@@ -565,8 +664,8 @@ export default function App() {
                     <div className="w-12 h-12 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                       <AlertTriangle className="w-6 h-6 text-amber-600" />
                     </div>
-                    <h3 className="font-bold text-slate-800 text-lg group-hover:text-emerald-700 transition">Críticas e Erros</h3>
-                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">Registro e controle interno de críticas e inconsistências do faturamento.</p>
+                    <h3 className="font-bold text-slate-800 text-lg group-hover:text-emerald-700 transition">Críticas e Erros (NTI)</h3>
+                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">Acompanhamento ativo e biblioteca de consulta de chamados NTI.</p>
                   </div>
                   <span className="text-xs font-bold text-emerald-600 mt-4 flex items-center gap-1 group-hover:underline">Acessar Módulo <ChevronRight className="w-3.5 h-3.5" /></span>
                 </div>
@@ -664,15 +763,15 @@ export default function App() {
             <header className="bg-white border-b px-8 py-5 flex justify-between items-center shadow-sm">
               <div>
                 <h2 className="text-2xl font-bold text-slate-800">
-                  {activeTab === 'criticas' && 'Gestão de Críticas e Erros'}
+                  {activeTab === 'criticas' && 'Gestão de Críticas e Erros (Chamados NTI)'}
                   {activeTab === 'sem_valor' && 'Procedimentos Sem Valor (Alerta SLA 48h)'}
                   {activeTab === 'sem_tuss' && 'Procedimentos Sem TUSS (Alerta SLA 24h & Mat./Med.)'}
                   {activeTab === 'chamados' && 'Central de Chamados e Suporte Interno'}
                 </h2>
                 <p className="text-sm text-slate-500">
-                  {activeTab === 'criticas' ? 'Acompanhamento e registro de críticas e inconsistências de faturamento' : 
+                  {activeTab === 'criticas' ? 'Acompanhamento dinâmico da operação e biblioteca de busca do NTI' : 
                    activeTab === 'chamados' ? 'Abertura, controle e acompanhamento de solicitações internas' : 
-                   'Acompanhamento e resolução de pendências'}
+                   'Acompanhamento e resolução de pendências do setor'}
                 </p>
               </div>
 
@@ -686,25 +785,38 @@ export default function App() {
 
             <div className="p-8 flex-1 overflow-y-auto space-y-6">
               
-              {/* Filtros */}
+              {/* Filtros e Alternância para Histórico */}
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
                 <div className="flex items-center justify-between border-b pb-2">
                   <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-2">
-                    <Filter className="w-4 h-4 text-emerald-600" /> Filtros de Pesquisa
+                    <Filter className="w-4 h-4 text-emerald-600" /> Filtros e Busca Operacional
                   </span>
-                  <button onClick={clearFilters} className="text-xs text-slate-500 hover:text-emerald-700 underline font-medium">Limpar Filtros</button>
+                  
+                  {/* Botão para Ativar/Desativar Biblioteca de Histórico */}
+                  <button
+                    onClick={() => setShowHistory(!showHistory)}
+                    className={`text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition ${
+                      showHistory 
+                        ? 'bg-amber-100 text-amber-900 border border-amber-300' 
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
+                    }`}
+                  >
+                    <History className="w-3.5 h-3.5" />
+                    {showHistory ? 'Exibindo Histórico Completo' : 'Exibir Concluídos / Histórico'}
+                  </button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-1">
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 mb-1">Status</label>
                     <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="w-full border p-2 rounded-lg text-sm bg-white">
-                      <option value="Todos">Todos os Status</option>
+                      <option value="Todos">Todos (Ativos no Dia a Dia)</option>
                       <option value="Pendente">1. Pendente / Aberto</option>
                       <option value="Em Andamento">2. Em Andamento</option>
-                      <option value="Aguardando Retorno">3. Aguardando Retorno</option>
-                      <option value="Concluído">4. Concluído</option>
-                      <option value="Cancelado">5. Cancelado</option>
+                      <option value="Aguardando TI">3. Aguardando TI</option>
+                      <option value="Aguardando Retorno">4. Aguardando Retorno do Usuário</option>
+                      <option value="Concluído">5. Concluído (Histórico)</option>
+                      <option value="Cancelado">6. Cancelado (Histórico)</option>
                     </select>
                   </div>
 
@@ -726,8 +838,11 @@ export default function App() {
                     </>
                   ) : (
                     <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1">Buscar por Atendimento / Crítica / Texto</label>
-                      <input type="text" placeholder="Digite atendimento ou palavra-chave..." value={filterProfat} onChange={(e) => setFilterProfat(e.target.value)} className="w-full border p-2 rounded-lg text-sm" />
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Buscar por Atendimento / Nº NTI / Palavra-Chave</label>
+                      <div className="relative">
+                        <input type="text" placeholder="Digite Nº NTI (ex: 47862) ou palavra..." value={filterProfat} onChange={(e) => setFilterProfat(e.target.value)} className="w-full border p-2 pr-8 rounded-lg text-sm" />
+                        <Search className="w-4 h-4 text-slate-400 absolute right-2.5 top-2.5" />
+                      </div>
                     </div>
                   )}
 
@@ -760,10 +875,10 @@ export default function App() {
                         </>
                       ) : (
                         <>
-                          <th className="p-4">Atendimento</th>
+                          <th className="p-4">Atendimento / Nº NTI</th>
                           {activeTab === 'criticas' && (
                             <>
-                              <th className="p-4">Crítica / Erro</th>
+                              <th className="p-4">Crítica / Erro Apresentado</th>
                               <th className="p-4">Sistema</th>
                               <th className="p-4">Empresa / Convênio</th>
                             </>
@@ -795,7 +910,9 @@ export default function App() {
                   <tbody className="divide-y divide-slate-100">
                     {filteredAndSortedItems.length === 0 ? (
                       <tr>
-                        <td colSpan="10" className="p-8 text-center text-slate-400">Nenhum registro encontrado.</td>
+                        <td colSpan="10" className="p-8 text-center text-slate-400">
+                          Nenhum registro ativo encontrado. {showHistory ? '' : 'Ative "Exibir Concluídos" para pesquisar no histórico.'}
+                        </td>
                       </tr>
                     ) : (
                       filteredAndSortedItems.map((item) => {
@@ -803,14 +920,15 @@ export default function App() {
                         const sla24 = activeTab === 'sem_tuss' ? getSLAStatus(item.dtSolicitacao, 24) : null;
 
                         return (
-                          <tr key={item.id} className="hover:bg-slate-50 transition">
+                          <tr key={item.id} className={`hover:bg-slate-50 transition ${item.status === 'Concluído' ? 'bg-slate-50/50' : ''}`}>
                             <td className="p-4">
                               <select
                                 value={item.status || 'Pendente'}
                                 onChange={(e) => handleStatusChange(item.id, e.target.value)}
                                 className={`text-xs font-semibold px-2.5 py-1 rounded-full border shadow-sm outline-none cursor-pointer ${
                                   item.status === 'Concluído' ? 'bg-slate-100 text-slate-600 border-slate-300' :
-                                  item.status === 'Em Andamento' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                  item.status === 'Em Andamento' || item.status === 'Em andamento' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                  item.status === 'Aguardando TI' ? 'bg-purple-50 text-purple-700 border-purple-200' :
                                   item.status === 'Aguardando Retorno' ? 'bg-orange-50 text-orange-700 border-orange-200' :
                                   item.status === 'Cancelado' ? 'bg-red-50 text-red-700 border-red-200' :
                                   'bg-amber-50 text-amber-800 border-amber-300'
@@ -818,7 +936,8 @@ export default function App() {
                               >
                                 <option value="Pendente">🟡 Pendente / Aberto</option>
                                 <option value="Em Andamento">🔵 Em Andamento</option>
-                                <option value="Aguardando Retorno">🟠 Aguardando Retorno</option>
+                                <option value="Aguardando TI">🟣 Aguardando TI</option>
+                                <option value="Aguardando Retorno">🟠 Aguardando Retorno do Usuário</option>
                                 <option value="Concluído">🟢 Concluído</option>
                                 <option value="Cancelado">⚪ Cancelado</option>
                               </select>
@@ -869,7 +988,12 @@ export default function App() {
                             ) : (
                               <>
                                 <td className="p-4 font-mono text-xs font-semibold text-slate-700">
-                                  {item.codAtendimento || '-'}
+                                  <div>Atend: {item.codAtendimento || '-'}</div>
+                                  {item.numChamado && (
+                                    <div className="text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 mt-1 w-max font-bold">
+                                      NTI: #{item.numChamado}
+                                    </div>
+                                  )}
                                 </td>
 
                                 {activeTab === 'criticas' && (
@@ -994,7 +1118,7 @@ export default function App() {
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden">
             <div className="px-6 py-4 bg-emerald-900 text-white flex justify-between items-center">
               <h3 className="font-bold text-lg">
-                {editingId ? 'Editar Registro' : 'Novo Registro'} - {activeTab === 'chamados' ? 'Chamado Interno' : activeTab === 'criticas' ? 'Crítica e Erro' : 'Pendência'}
+                {editingId ? 'Editar Registro' : 'Novo Registro'} - {activeTab === 'chamados' ? 'Chamado Interno' : activeTab === 'criticas' ? 'Crítica e Chamado NTI' : 'Pendência'}
               </h3>
               <button onClick={() => setIsModalOpen(false)} className="text-emerald-200 hover:text-white">
                 <X className="w-5 h-5" />
@@ -1087,17 +1211,23 @@ export default function App() {
                 </>
               )}
 
-              {/* Form Críticas e Erros (Estrutura Padrão Limpa) */}
+              {/* Form Críticas e Erros (Chamados NTI) */}
               {activeTab === 'criticas' && (
                 <>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Cód. Atendimento Hospitalar</label>
-                    <input name="codAtendimento" value={formData.codAtendimento || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Ex: 1234567" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Nº do Chamado NTI</label>
+                      <input name="numChamado" value={formData.numChamado || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm font-mono font-bold text-blue-900 bg-blue-50 border-blue-200" placeholder="Ex: 47862" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Cód. Atendimento Hospitalar</label>
+                      <input name="codAtendimento" value={formData.codAtendimento || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Ex: 4297364" />
+                    </div>
                   </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">Crítica / Erro Apresentado *</label>
-                    <input required name="criticaErro" value={formData.criticaErro || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Descrição da crítica ou erro" />
+                    <input required name="criticaErro" value={formData.criticaErro || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Descrição do erro ou lote travado" />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -1105,16 +1235,18 @@ export default function App() {
                       <label className="block text-xs font-semibold text-slate-700 mb-1">Sistema *</label>
                       <select name="sistema" value={formData.sistema || 'SoulMV'} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white">
                         <option value="SoulMV">SoulMV</option>
+                        <option value="Easy Audit">Easy Audit</option>
                         <option value="SAW">SAW</option>
-                        <option value="EasyAudit">EasyAudit</option>
+                        <option value="Hardware">Hardware / Estação</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Status *</label>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Status da NTI *</label>
                       <select name="status" value={formData.status || 'Pendente'} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white font-semibold">
                         <option value="Pendente">🟡 Pendente / Aberto</option>
                         <option value="Em Andamento">🔵 Em Andamento</option>
-                        <option value="Aguardando Retorno">🟠 Aguardando Retorno</option>
+                        <option value="Aguardando TI">🟣 Aguardando TI</option>
+                        <option value="Aguardando Retorno">🟠 Aguardando Retorno do Usuário</option>
                         <option value="Concluído">🟢 Concluído</option>
                         <option value="Cancelado">⚪ Cancelado</option>
                       </select>
@@ -1138,8 +1270,8 @@ export default function App() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Observações / Detalhes</label>
-                    <textarea name="observacao" value={formData.observacao || ''} onChange={handleInputChange} rows="3" className="w-full border p-2.5 rounded-lg text-sm" placeholder="Observações adicionais..."></textarea>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Tratativa NTI / Observações</label>
+                    <textarea name="observacao" value={formData.observacao || ''} onChange={handleInputChange} rows="3" className="w-full border p-2.5 rounded-lg text-sm" placeholder="Histórico de tratativas e retornos dados..."></textarea>
                   </div>
                 </>
               )}
