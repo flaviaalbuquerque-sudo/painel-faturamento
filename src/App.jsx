@@ -6,7 +6,7 @@ import {
   FileCode, ChevronRight, X, Edit3, MessageSquare, Paperclip,
   Home, Send, Filter, HelpCircle, CheckCircle2, ArrowRight,
   Mail, Download, Image as ImageIcon, Bell, BellRing,
-  BarChart3, Activity, AlertCircle, CheckCircle
+  BarChart3, Activity, CheckCircle, Tag
 } from 'lucide-react';
 
 export default function App() {
@@ -24,7 +24,7 @@ export default function App() {
 
   // Estatísticas Globais do Dashboard
   const [dashStats, setDashStats] = useState({
-    criticas: { total: 0, pendente: 0, andamento: 0, concluido: 0 },
+    criticas: { total: 0, pendente: 0, andamento: 0, aguardandoTi: 0, concluido: 0 },
     sem_valor: { total: 0, pendente: 0, andamento: 0, concluido: 0, slaEstourado: 0 },
     sem_tuss: { total: 0, pendente: 0, andamento: 0, concluido: 0, slaEstourado: 0 },
     chamados: { total: 0, pendente: 0, andamento: 0, concluido: 0, altaPrioridade: 0 }
@@ -54,8 +54,9 @@ export default function App() {
       return onSnapshot(q, (snapshot) => {
         const docs = snapshot.docs.map(doc => doc.data());
         const total = docs.length;
-        const pendente = docs.filter(d => (d.status || 'Pendente') === 'Pendente').length;
+        const pendente = docs.filter(d => (d.status || 'Pendente') === 'Pendente' || d.status === 'Aberto').length;
         const andamento = docs.filter(d => d.status === 'Em Andamento').length;
+        const aguardandoTi = docs.filter(d => d.status === 'Aguardando TI').length;
         const concluido = docs.filter(d => d.status === 'Concluído').length;
 
         let slaEstourado = 0;
@@ -81,7 +82,7 @@ export default function App() {
         if (previousTotalRef.current[colName] !== undefined && total > previousTotalRef.current[colName]) {
           if (Notification.permission === 'granted') {
             new Notification('🔔 Nova Demanda Registrada!', {
-              body: `Foi inserido um novo registro no módulo: ${colName.toUpperCase()}`,
+              body: `Novo registro inserido no módulo: ${colName.toUpperCase()}`,
               icon: '/logo-unimed.png'
             });
           }
@@ -90,7 +91,7 @@ export default function App() {
 
         setDashStats(prev => ({
           ...prev,
-          [colName]: { total, pendente, andamento, concluido, slaEstourado, altaPrioridade }
+          [colName]: { total, pendente, andamento, aguardandoTi, concluido, slaEstourado, altaPrioridade }
         }));
       });
     });
@@ -112,7 +113,6 @@ export default function App() {
     return () => unsubscribe();
   }, [activeTab]);
 
-  // Ativar Notificações no Navegador
   const toggleNotifications = () => {
     if (!('Notification' in window)) {
       alert('Seu navegador não suporta notificações de área de trabalho.');
@@ -195,7 +195,7 @@ export default function App() {
     setEditingId(null);
     setFilePreview(null);
     const novoCodigoChamado = `CH-${Math.floor(100000 + Math.random() * 900000)}`;
-    setFormData({ codChamado: novoCodigoChamado, prioridade: 'Média', sistema: 'SoulMV', tipoChamado: 'Falha' });
+    setFormData({ codChamado: novoCodigoChamado, prioridade: 'Média', sistema: 'SoulMV', tipoChamado: 'Falha', status: 'Pendente' });
     setIsModalOpen(true);
   };
 
@@ -246,7 +246,6 @@ export default function App() {
     setTimeout(() => setFeedbackEnviado(false), 5000);
   };
 
-  // Função Genérica de Cálculo de SLA (Horas Personalizadas)
   const getSLAStatus = (dateString, maxHours = 48) => {
     if (!dateString) return null;
     const requestDate = new Date(dateString);
@@ -261,20 +260,33 @@ export default function App() {
     return { label: 'Dentro do SLA', color: 'bg-emerald-100 text-emerald-800 border-emerald-300' };
   };
 
-  const statusPriority = { 'Pendente': 1, 'Em Andamento': 2, 'Concluído': 3 };
+  const statusPriority = { 
+    'Pendente': 1, 
+    'Aberto': 1,
+    'Em Andamento': 2, 
+    'Aguardando TI': 3,
+    'Aguardando Retorno': 4,
+    'Concluído': 5,
+    'Cancelado': 6
+  };
 
   const filteredAndSortedItems = items
     .filter((item) => {
       if (filterStatus !== 'Todos' && (item.status || 'Pendente') !== filterStatus) return false;
 
       if (filterProfat.trim() !== '') {
-        const profatMatch = String(item.profat || '').toLowerCase().includes(filterProfat.toLowerCase());
+        const queryStr = filterProfat.toLowerCase();
+        const profatMatch = String(item.profat || '').toLowerCase().includes(queryStr) ||
+                            String(item.criticaErro || '').toLowerCase().includes(queryStr) ||
+                            String(item.numChamado || '').toLowerCase().includes(queryStr) ||
+                            String(item.codAtendimento || '').toLowerCase().includes(queryStr);
         if (!profatMatch) return false;
       }
 
       if (filterChamado.trim() !== '') {
         const chamadoMatch = String(item.codChamado || '').toLowerCase().includes(filterChamado.toLowerCase()) ||
-                             String(item.tituloChamado || '').toLowerCase().includes(filterChamado.toLowerCase());
+                             String(item.tituloChamado || '').toLowerCase().includes(filterChamado.toLowerCase()) ||
+                             String(item.numChamado || '').toLowerCase().includes(filterChamado.toLowerCase());
         if (!chamadoMatch) return false;
       }
 
@@ -304,7 +316,6 @@ export default function App() {
     setFilterDateEnd('');
   };
 
-  // Cálculo Totais Dashboard Geral
   const totalPendenciasGeral = dashStats.criticas.pendente + dashStats.sem_valor.pendente + dashStats.sem_tuss.pendente + dashStats.chamados.pendente;
   const totalEmAndamentoGeral = dashStats.criticas.andamento + dashStats.sem_valor.andamento + dashStats.sem_tuss.andamento + dashStats.chamados.andamento;
   const totalConcluidosGeral = dashStats.criticas.concluido + dashStats.sem_valor.concluido + dashStats.sem_tuss.concluido + dashStats.chamados.concluido;
@@ -327,7 +338,6 @@ export default function App() {
             <p className="text-xs text-emerald-200/70 font-medium">Painel Operacional e Chamados Internos</p>
           </div>
 
-          {/* Botão de Ativar Notificações */}
           <div className="p-4 border-b border-emerald-900/50">
             <button
               onClick={toggleNotifications}
@@ -364,7 +374,7 @@ export default function App() {
             >
               <div className="flex items-center gap-3">
                 <AlertTriangle className="w-5 h-5 text-amber-400" />
-                <span>Críticas e Erros</span>
+                <span>Críticas e Erros (NTI)</span>
               </div>
               <ChevronRight className="w-4 h-4 opacity-50" />
             </button>
@@ -422,7 +432,6 @@ export default function App() {
         {activeTab === 'inicio' ? (
           <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-slate-50">
             
-            {/* Banner de Boas-Vindas */}
             <div className="bg-gradient-to-r from-emerald-900 to-emerald-800 rounded-2xl p-8 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="space-y-3 max-w-2xl">
                 <div className="inline-flex items-center gap-2 bg-emerald-700/50 px-3 py-1 rounded-full text-xs font-semibold text-emerald-200 border border-emerald-600">
@@ -445,7 +454,6 @@ export default function App() {
                 <BarChart3 className="w-5 h-5 text-emerald-600" /> Status Geral das Demandas (Tempo Real)
               </h2>
 
-              {/* Cards Visão Geral */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div className="bg-white p-5 rounded-2xl border border-amber-200 shadow-sm flex items-center justify-between">
                   <div>
@@ -460,7 +468,7 @@ export default function App() {
 
                 <div className="bg-white p-5 rounded-2xl border border-blue-200 shadow-sm flex items-center justify-between">
                   <div>
-                    <span className="text-xs font-bold text-blue-700 uppercase tracking-wider block">Em Andamento</span>
+                    <span className="text-xs font-bold text-blue-700 uppercase tracking-wider block">Em Andamento / TI</span>
                     <span className="text-3xl font-extrabold text-blue-950">{totalEmAndamentoGeral}</span>
                     <span className="text-xs text-slate-500 block mt-1">Em tratativa técnica</span>
                   </div>
@@ -481,23 +489,21 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Detalhamento por Módulo com Destaque para Chamados Internos */}
+              {/* Detalhamento por Módulo */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                
-                {/* Status Críticas e Erros */}
                 <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-2">
                   <div className="flex justify-between items-center border-b pb-2">
-                    <span className="font-bold text-xs text-slate-800">Críticas e Erros</span>
+                    <span className="font-bold text-xs text-slate-800">Críticas e Erros (Chamados NTI)</span>
                     <span className="text-xs font-mono font-bold bg-slate-100 px-2 py-0.5 rounded">{dashStats.criticas.total} total</span>
                   </div>
                   <div className="text-xs space-y-1 text-slate-600">
                     <div className="flex justify-between"><span>Pendentes:</span> <strong className="text-amber-600">{dashStats.criticas.pendente}</strong></div>
                     <div className="flex justify-between"><span>Em Andamento:</span> <strong className="text-blue-600">{dashStats.criticas.andamento}</strong></div>
+                    <div className="flex justify-between"><span>Aguardando TI:</span> <strong className="text-purple-600">{dashStats.criticas.aguardandoTi}</strong></div>
                     <div className="flex justify-between"><span>Concluídos:</span> <strong className="text-emerald-600">{dashStats.criticas.concluido}</strong></div>
                   </div>
                 </div>
 
-                {/* Status Proced. Sem Valor */}
                 <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-2">
                   <div className="flex justify-between items-center border-b pb-2">
                     <span className="font-bold text-xs text-slate-800">Proced. Sem Valor (SLA 48h)</span>
@@ -510,7 +516,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Status Proced. Sem TUSS */}
                 <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-2">
                   <div className="flex justify-between items-center border-b pb-2">
                     <span className="font-bold text-xs text-slate-800">Proced. Sem TUSS (SLA 24h)</span>
@@ -523,7 +528,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* DESTAQUE: Chamados Internos */}
                 <div className="bg-emerald-50/70 p-4 rounded-xl border border-emerald-300 shadow-sm space-y-2">
                   <div className="flex justify-between items-center border-b border-emerald-200 pb-2">
                     <span className="font-bold text-xs text-emerald-900 flex items-center gap-1">
@@ -537,7 +541,6 @@ export default function App() {
                     <div className="flex justify-between"><span>Concluídos:</span> <strong className="text-emerald-700">{dashStats.chamados.concluido}</strong></div>
                   </div>
                 </div>
-
               </div>
             </div>
 
@@ -552,8 +555,8 @@ export default function App() {
                     <div className="w-12 h-12 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                       <AlertTriangle className="w-6 h-6 text-amber-600" />
                     </div>
-                    <h3 className="font-bold text-slate-800 text-lg group-hover:text-emerald-700 transition">Críticas e Erros</h3>
-                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">Acompanhamento e correção de inconsistências nos sistemas SoulMV e SAW.</p>
+                    <h3 className="font-bold text-slate-800 text-lg group-hover:text-emerald-700 transition">Críticas e Erros (NTI)</h3>
+                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">Acompanhamento de críticas e controle de chamados abertos junto à NTI.</p>
                   </div>
                   <span className="text-xs font-bold text-emerald-600 mt-4 flex items-center gap-1 group-hover:underline">Acessar Módulo <ChevronRight className="w-3.5 h-3.5" /></span>
                 </div>
@@ -564,7 +567,7 @@ export default function App() {
                       <Clock className="w-6 h-6 text-emerald-600" />
                     </div>
                     <h3 className="font-bold text-slate-800 text-lg group-hover:text-emerald-700 transition">Proced. Sem Valor</h3>
-                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">Mapeamento de procedimentos sem valor com alerta automático de SLA de 48 horas.</p>
+                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">Procedimentos sem precificação com alerta de SLA de 48 horas.</p>
                   </div>
                   <span className="text-xs font-bold text-emerald-600 mt-4 flex items-center gap-1 group-hover:underline">Acessar Módulo <ChevronRight className="w-3.5 h-3.5" /></span>
                 </div>
@@ -575,7 +578,7 @@ export default function App() {
                       <FileCode className="w-6 h-6 text-blue-600" />
                     </div>
                     <h3 className="font-bold text-slate-800 text-lg group-hover:text-emerald-700 transition">Proced. Sem TUSS</h3>
-                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">Depara de códigos PROFAT com tabelas XML, TUSS, Mat./Med. e SLA de 24 horas.</p>
+                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">Depara de códigos PROFAT com tabelas XML, TUSS, Mat./Med. e SLA 24h.</p>
                   </div>
                   <span className="text-xs font-bold text-emerald-600 mt-4 flex items-center gap-1 group-hover:underline">Acessar Módulo <ChevronRight className="w-3.5 h-3.5" /></span>
                 </div>
@@ -586,7 +589,7 @@ export default function App() {
                       <MessageSquare className="w-6 h-6 text-purple-600" />
                     </div>
                     <h3 className="font-bold text-slate-800 text-lg group-hover:text-emerald-700 transition">Chamados Internos</h3>
-                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">Central de chamados com código único, prioridade e suporte a anexos.</p>
+                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">Central de chamados da equipe com código único e suporte a anexos.</p>
                   </div>
                   <span className="text-xs font-bold text-emerald-600 mt-4 flex items-center gap-1 group-hover:underline">Acessar Módulo <ChevronRight className="w-3.5 h-3.5" /></span>
                 </div>
@@ -651,13 +654,15 @@ export default function App() {
             <header className="bg-white border-b px-8 py-5 flex justify-between items-center shadow-sm">
               <div>
                 <h2 className="text-2xl font-bold text-slate-800">
-                  {activeTab === 'criticas' && 'Gestão de Críticas e Erros (SoulMV / SAW)'}
+                  {activeTab === 'criticas' && 'Gestão de Críticas, Erros e Chamados NTI'}
                   {activeTab === 'sem_valor' && 'Procedimentos Sem Valor (Alerta SLA 48h)'}
                   {activeTab === 'sem_tuss' && 'Procedimentos Sem TUSS (Alerta SLA 24h & Mat./Med.)'}
                   {activeTab === 'chamados' && 'Central de Chamados e Suporte Interno'}
                 </h2>
                 <p className="text-sm text-slate-500">
-                  {activeTab === 'chamados' ? 'Abertura, controle e acompanhamento de solicitações internas' : 'Acompanhamento e resolução de chamados e pendências'}
+                  {activeTab === 'criticas' ? 'Acompanhamento integrado de inconsistências e suporte junto à NTI' : 
+                   activeTab === 'chamados' ? 'Abertura, controle e acompanhamento de solicitações internas' : 
+                   'Acompanhamento e resolução de chamados e pendências'}
                 </p>
               </div>
 
@@ -685,9 +690,12 @@ export default function App() {
                     <label className="block text-xs font-semibold text-slate-600 mb-1">Status</label>
                     <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="w-full border p-2 rounded-lg text-sm bg-white">
                       <option value="Todos">Todos os Status</option>
-                      <option value="Pendente">1. Pendente</option>
+                      <option value="Pendente">1. Pendente / Aberto</option>
                       <option value="Em Andamento">2. Em Andamento</option>
-                      <option value="Concluído">3. Concluído</option>
+                      <option value="Aguardando TI">3. Aguardando TI</option>
+                      <option value="Aguardando Retorno">4. Aguardando Retorno do Usuário</option>
+                      <option value="Concluído">5. Concluído</option>
+                      <option value="Cancelado">6. Cancelado</option>
                     </select>
                   </div>
 
@@ -695,561 +703,4 @@ export default function App() {
                     <>
                       <div>
                         <label className="block text-xs font-semibold text-slate-600 mb-1">Cód. Chamado / Título</label>
-                        <input type="text" placeholder="Ex: CH-849201" value={filterChamado} onChange={(e) => setFilterChamado(e.target.value)} className="w-full border p-2 rounded-lg text-sm" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">Sistema</label>
-                        <select value={filterSistema} onChange={(e) => setFilterSistema(e.target.value)} className="w-full border p-2 rounded-lg text-sm bg-white">
-                          <option value="Todos">Todos os Sistemas</option>
-                          <option value="SoulMV">SoulMV</option>
-                          <option value="EasyAudit">EasyAudit</option>
-                          <option value="SAW">SAW</option>
-                        </select>
-                      </div>
-                    </>
-                  ) : (
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1">Código PROFAT</label>
-                      <input type="text" placeholder="Pesquisar por PROFAT..." value={filterProfat} onChange={(e) => setFilterProfat(e.target.value)} className="w-full border p-2 rounded-lg text-sm" />
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">Data Inicial</label>
-                    <input type="date" value={filterDateStart} onChange={(e) => setFilterDateStart(e.target.value)} className="w-full border p-2 rounded-lg text-sm" />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">Data Final</label>
-                    <input type="date" value={filterDateEnd} onChange={(e) => setFilterDateEnd(e.target.value)} className="w-full border p-2 rounded-lg text-sm" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Tabela de Dados */}
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <table className="w-full text-left text-sm text-slate-600">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500 font-semibold">
-                    <tr>
-                      <th className="p-4">Status</th>
-                      {activeTab === 'chamados' ? (
-                        <>
-                          <th className="p-4">Código / Título</th>
-                          <th className="p-4">Solicitante / Setor</th>
-                          <th className="p-4">Sistema / Tipo</th>
-                          <th className="p-4">Contato</th>
-                          <th className="p-4">Prioridade</th>
-                          <th className="p-4 text-center">Anexo</th>
-                        </>
-                      ) : (
-                        <>
-                          <th className="p-4">Atendimento</th>
-                          {activeTab === 'criticas' && (
-                            <>
-                              <th className="p-4">Crítica/Erro</th>
-                              <th className="p-4">Prioridade</th>
-                              <th className="p-4">Sistema</th>
-                              <th className="p-4">Empresa / Convênio</th>
-                              <th className="p-4">Nº Chamado</th>
-                            </>
-                          )}
-                          {activeTab === 'sem_valor' && (
-                            <>
-                              <th className="p-4">Profat / Descrição</th>
-                              <th className="p-4">Tabela</th>
-                              <th className="p-4">Alerta SLA (48h)</th>
-                              <th className="p-4">Empresa / Convênio</th>
-                              <th className="p-4">Dt da Conta</th>
-                            </>
-                          )}
-                          {activeTab === 'sem_tuss' && (
-                            <>
-                              <th className="p-4">Profat / Descrição</th>
-                              <th className="p-4">TUSS / Tabela XML</th>
-                              <th className="p-4">Alerta SLA (24h)</th>
-                              <th className="p-4 text-center">Foto Mat./Med.</th>
-                              <th className="p-4">Empresa / Convênio</th>
-                            </>
-                          )}
-                          <th className="p-4">Usuário</th>
-                        </>
-                      )}
-                      <th className="p-4 text-center">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredAndSortedItems.length === 0 ? (
-                      <tr>
-                        <td colSpan="10" className="p-8 text-center text-slate-400">Nenhum registro encontrado.</td>
-                      </tr>
-                    ) : (
-                      filteredAndSortedItems.map((item) => {
-                        const sla48 = activeTab === 'sem_valor' ? getSLAStatus(item.dtSolicitacao, 48) : null;
-                        const sla24 = activeTab === 'sem_tuss' ? getSLAStatus(item.dtSolicitacao, 24) : null;
-
-                        return (
-                          <tr key={item.id} className="hover:bg-slate-50 transition">
-                            <td className="p-4">
-                              <select
-                                value={item.status || 'Pendente'}
-                                onChange={(e) => handleStatusChange(item.id, e.target.value)}
-                                className={`text-xs font-semibold px-2.5 py-1 rounded-full border shadow-sm outline-none cursor-pointer ${
-                                  item.status === 'Concluído' ? 'bg-slate-100 text-slate-600 border-slate-300' :
-                                  item.status === 'Em Andamento' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                  'bg-amber-50 text-amber-800 border-amber-300'
-                                }`}
-                              >
-                                <option value="Pendente">🟡 Pendente</option>
-                                <option value="Em Andamento">🔵 Em Andamento</option>
-                                <option value="Concluído">🟢 Concluído</option>
-                              </select>
-                            </td>
-
-                            {activeTab === 'chamados' ? (
-                              <>
-                                <td className="p-4">
-                                  <div className="font-mono text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded w-max mb-1 border border-emerald-200">
-                                    {item.codChamado}
-                                  </div>
-                                  <div className="font-semibold text-slate-800 text-sm">{item.tituloChamado}</div>
-                                </td>
-                                <td className="p-4">
-                                  <div className="font-medium text-slate-800">{item.nomeUsuario}</div>
-                                  <div className="text-xs text-slate-500">{item.setor}</div>
-                                </td>
-                                <td className="p-4">
-                                  <span className="font-medium text-slate-700">{item.sistema}</span>
-                                  <span className="text-xs text-slate-500 block">({item.tipoChamado})</span>
-                                </td>
-                                <td className="p-4 text-xs text-slate-600">
-                                  <div>Chat: {item.chat || '-'}</div>
-                                  <div>Ramal: {item.ramal || '-'}</div>
-                                </td>
-                                <td className="p-4">
-                                  <span className={`px-2 py-1 text-xs rounded font-bold ${
-                                    item.prioridade === 'Alta' ? 'bg-red-100 text-red-700' :
-                                    item.prioridade === 'Média' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700'
-                                  }`}>
-                                    {item.prioridade || 'Normal'}
-                                  </span>
-                                </td>
-                                <td className="p-4 text-center">
-                                  {item.anexoUrl ? (
-                                    <button 
-                                      onClick={() => handleOpenAnexo(item)}
-                                      className="inline-flex items-center gap-1 text-xs text-emerald-800 hover:bg-emerald-100 bg-emerald-50 p-1.5 rounded border border-emerald-300 font-semibold transition"
-                                      title={item.anexoNome}
-                                    >
-                                      <Paperclip className="w-3.5 h-3.5 text-emerald-600" /> Ver Anexo
-                                    </button>
-                                  ) : (
-                                    <span className="text-xs text-slate-400">-</span>
-                                  )}
-                                </td>
-                              </>
-                            ) : (
-                              <>
-                                <td className="p-4 font-mono text-xs font-semibold text-slate-700">
-                                  {item.codAtendimento || '-'}
-                                </td>
-
-                                {activeTab === 'criticas' && (
-                                  <>
-                                    <td className="p-4 font-medium text-slate-800">{item.criticaErro}</td>
-                                    <td className="p-4">
-                                      <span className={`px-2 py-1 text-xs rounded font-bold ${
-                                        item.prioridade === 'Alta' ? 'bg-red-100 text-red-700' :
-                                        item.prioridade === 'Média' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700'
-                                      }`}>
-                                        {item.prioridade || 'Normal'}
-                                      </span>
-                                    </td>
-                                    <td className="p-4">{item.sistema}</td>
-                                    <td className="p-4">{item.empresa} / {item.convenio}</td>
-                                    <td className="p-4 font-mono text-xs">{item.numChamado || '-'}</td>
-                                  </>
-                                )}
-
-                                {activeTab === 'sem_valor' && (
-                                  <>
-                                    <td className="p-4 font-medium text-slate-800">{item.profat} - {item.descricao}</td>
-                                    <td className="p-4 text-xs font-semibold text-slate-700">{item.tabela || '-'}</td>
-                                    <td className="p-4">
-                                      {sla48 && (
-                                        <span className={`px-2.5 py-1 text-xs rounded-md font-semibold border ${sla48.color}`}>
-                                          {sla48.label}
-                                        </span>
-                                      )}
-                                    </td>
-                                    <td className="p-4">{item.empresa} / {item.convenio}</td>
-                                    <td className="p-4">{item.dtConta}</td>
-                                  </>
-                                )}
-
-                                {activeTab === 'sem_tuss' && (
-                                  <>
-                                    <td className="p-4 font-medium text-slate-800">{item.profat} - {item.descricao}</td>
-                                    <td className="p-4">{item.tuss || 'Sem TUSS'} ({item.tabelaXml || '-'})</td>
-                                    <td className="p-4">
-                                      {sla24 && (
-                                        <span className={`px-2.5 py-1 text-xs rounded-md font-semibold border ${sla24.color}`}>
-                                          {sla24.label}
-                                        </span>
-                                      )}
-                                    </td>
-                                    <td className="p-4 text-center">
-                                      {item.anexoUrl ? (
-                                        <button 
-                                          onClick={() => handleOpenAnexo(item)}
-                                          className="inline-flex items-center gap-1 text-xs text-blue-800 hover:bg-blue-100 bg-blue-50 p-1.5 rounded border border-blue-300 font-semibold transition"
-                                          title={item.anexoNome}
-                                        >
-                                          <ImageIcon className="w-3.5 h-3.5 text-blue-600" /> Ver Foto Mat/Med
-                                        </button>
-                                      ) : (
-                                        <span className="text-xs text-slate-400">-</span>
-                                      )}
-                                    </td>
-                                    <td className="p-4">{item.empresa} / {item.convenio}</td>
-                                  </>
-                                )}
-
-                                <td className="p-4 text-xs text-slate-500">{item.usuario || 'Sistema'}</td>
-                              </>
-                            )}
-
-                            <td className="p-4 flex items-center justify-center gap-2">
-                              <button 
-                                onClick={() => handleOpenEditModal(item)}
-                                className="flex items-center gap-1 text-xs text-amber-700 hover:text-amber-900 font-medium bg-amber-50 hover:bg-amber-100 px-2 py-1 rounded transition"
-                              >
-                                <Edit3 className="w-3.5 h-3.5" /> Editar
-                              </button>
-                              <button 
-                                onClick={() => alert(`Detalhes / Descrição:\n\n${item.descritivoChamado || item.observacao || 'Sem observações adicionais.'}`)}
-                                className="text-xs text-emerald-700 hover:underline px-1 py-1 font-medium"
-                              >
-                                Detalhes
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </>
-        )}
-      </main>
-
-      {/* Modal para Visualizar Imagem do Anexo */}
-      {viewAnexo && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="px-6 py-4 bg-emerald-950 text-white flex justify-between items-center">
-              <h3 className="font-bold text-sm flex items-center gap-2">
-                <ImageIcon className="w-4 h-4 text-emerald-400" /> Visualizador de Anexo: {viewAnexo.nome}
-              </h3>
-              <button onClick={() => setViewAnexo(null)} className="text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="p-6 overflow-auto flex items-center justify-center bg-slate-100 flex-1">
-              <img src={viewAnexo.url} alt="Anexo Anexado" className="max-h-[65vh] object-contain rounded border border-slate-300 shadow-md" />
-            </div>
-
-            <div className="p-4 bg-white border-t flex justify-end gap-3">
-              <a 
-                href={viewAnexo.url} 
-                download={viewAnexo.nome || 'anexo_registro'}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition"
-              >
-                <Download className="w-4 h-4" /> Baixar Imagem
-              </a>
-              <button onClick={() => setViewAnexo(null)} className="px-4 py-2 border rounded-lg text-xs text-slate-600 font-semibold">
-                Fechar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de Formulário de Cadastro/Edição */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden">
-            <div className="px-6 py-4 bg-emerald-900 text-white flex justify-between items-center">
-              <h3 className="font-bold text-lg">
-                {editingId ? 'Editar Registro' : 'Novo Registro'} - {activeTab === 'chamados' ? 'Chamado Interno' : activeTab}
-              </h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-emerald-200 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-              
-              {/* Form Chamados */}
-              {activeTab === 'chamados' && (
-                <>
-                  <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-bold text-emerald-700 uppercase tracking-wide">Código do Chamado Gerado</span>
-                      <h4 className="text-2xl font-mono font-extrabold text-emerald-950">{formData.codChamado}</h4>
-                    </div>
-                    <span className="text-xs text-emerald-800 bg-emerald-200 px-3 py-1 rounded-full font-semibold">Geração Automática</span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Nome do Colaborador *</label>
-                      <input required name="nomeUsuario" value={formData.nomeUsuario || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white" placeholder="Seu nome completo" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Setor *</label>
-                      <input required name="setor" value={formData.setor || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white" placeholder="Ex: Faturamento, Recepção, TI" />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Título do Chamado *</label>
-                    <input required name="tituloChamado" value={formData.tituloChamado || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm font-semibold text-slate-800" placeholder="Resumo da solicitação" />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Descritivo do Chamado *</label>
-                    <textarea required name="descritivoChamado" value={formData.descritivoChamado || ''} onChange={handleInputChange} rows="4" className="w-full border p-2.5 rounded-lg text-sm" placeholder="Explique o problema ou solicitação..."></textarea>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Sistema *</label>
-                      <select required name="sistema" value={formData.sistema || 'SoulMV'} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white">
-                        <option value="SoulMV">SoulMV</option>
-                        <option value="EasyAudit">EasyAudit</option>
-                        <option value="SAW">SAW</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Tipo de Chamado *</label>
-                      <select required name="tipoChamado" value={formData.tipoChamado || 'Falha'} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white">
-                        <option value="Falha">Falha</option>
-                        <option value="Correção">Correção</option>
-                        <option value="Dúvida">Dúvida</option>
-                        <option value="Esclarecimento">Esclarecimento</option>
-                        <option value="Ajuste">Ajuste</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Chat (Contato) *</label>
-                      <input required name="chat" value={formData.chat || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Teams / WhatsApp" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Ramal *</label>
-                      <input required name="ramal" value={formData.ramal || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Ex: 4022" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Prioridade *</label>
-                      <select required name="prioridade" value={formData.prioridade || 'Média'} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white">
-                        <option value="Baixa">Baixa</option>
-                        <option value="Média">Média</option>
-                        <option value="Alta">Alta</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="border border-dashed border-emerald-300 p-4 rounded-xl bg-emerald-50/50">
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Anexar Imagem (PNG/JPEG) ou Documento (PDF) (Max 700KB)</label>
-                    <input type="file" accept="image/png, image/jpeg, application/pdf" onChange={handleFileChange} className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200 cursor-pointer" />
-                    {filePreview && (
-                      <p className="mt-2 text-xs text-emerald-700 font-semibold flex items-center gap-1">
-                        <Paperclip className="w-3.5 h-3.5" /> Arquivo selecionado: {filePreview}
-                      </p>
-                    )}
-                  </div>
-                </>
-              )}
-
-              {/* Outros Forms */}
-              {activeTab !== 'chamados' && (
-                <>
-                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Cód. Atendimento</label>
-                    <input name="codAtendimento" value={formData.codAtendimento || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm bg-white" placeholder="Ex: 1234567" />
-                  </div>
-
-                  {activeTab === 'criticas' && (
-                    <>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-600 mb-1">Crítica / Erro</label>
-                          <input required name="criticaErro" value={formData.criticaErro || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-600 mb-1">Prioridade</label>
-                          <select name="prioridade" value={formData.prioridade || 'Baixa'} onChange={handleInputChange} className="w-full border p-2 rounded text-sm">
-                            <option value="Baixa">Baixa</option>
-                            <option value="Média">Média</option>
-                            <option value="Alta">Alta</option>
-                          </select>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-3 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-600 mb-1">Sistema</label>
-                          <select name="sistema" value={formData.sistema || 'SoulMV'} onChange={handleInputChange} className="w-full border p-2 rounded text-sm">
-                            <option value="SoulMV">SoulMV</option>
-                            <option value="SAW">SAW</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-600 mb-1">Empresa</label>
-                          <input name="empresa" value={formData.empresa || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-600 mb-1">Convênio</label>
-                          <input name="convenio" value={formData.convenio || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-600 mb-1">Remessa/Conta</label>
-                          <input name="remessa" value={formData.remessa || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-600 mb-1">Nº do Chamado</label>
-                          <input name="numChamado" value={formData.numChamado || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  {activeTab === 'sem_valor' && (
-                    <>
-                      <div className="grid grid-cols-3 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-600 mb-1">Profat</label>
-                          <input required name="profat" value={formData.profat || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
-                        </div>
-                        <div className="col-span-2">
-                          <label className="block text-xs font-semibold text-slate-600 mb-1">Descrição do Procedimento</label>
-                          <input required name="descricao" value={formData.descricao || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-600 mb-1">Tabela</label>
-                          <input name="tabela" value={formData.tabela || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="Ex: CBHPM / Própria" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-600 mb-1">Data da Solicitação (Para Alerta SLA 48h)</label>
-                          <input type="datetime-local" required name="dtSolicitacao" value={formData.dtSolicitacao || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-3 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-600 mb-1">Dt da Conta</label>
-                          <input type="date" name="dtConta" value={formData.dtConta || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-600 mb-1">Empresa</label>
-                          <input name="empresa" value={formData.empresa || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-600 mb-1">Convênio</label>
-                          <input name="convenio" value={formData.convenio || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  {activeTab === 'sem_tuss' && (
-                    <>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-600 mb-1">Profat</label>
-                          <input required name="profat" value={formData.profat || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-600 mb-1">Descrição do Procedimento</label>
-                          <input required name="descricao" value={formData.descricao || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-600 mb-1">Data da Solicitação (Para Alerta SLA 24h)</label>
-                          <input type="datetime-local" required name="dtSolicitacao" value={formData.dtSolicitacao || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-600 mb-1">Tabela XML</label>
-                          <input name="tabelaXml" value={formData.tabelaXml || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-600 mb-1">TUSS</label>
-                          <input name="tuss" value={formData.tuss || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-600 mb-1">Anvisa</label>
-                          <input name="anvisa" value={formData.anvisa || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-600 mb-1">Empresa</label>
-                          <input name="empresa" value={formData.empresa || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-600 mb-1">Convênio</label>
-                          <input name="convenio" value={formData.convenio || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
-                        </div>
-                      </div>
-
-                      {/* Anexo Exclusivo Foto Mat./Med. */}
-                      <div className="border border-dashed border-blue-300 p-4 rounded-xl bg-blue-50/50">
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">Anexar Imagem do Mat./Med. (Opcional - Max 700KB)</label>
-                        <input type="file" accept="image/png, image/jpeg, application/pdf" onChange={handleFileChange} className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-100 file:text-blue-800 hover:file:bg-blue-200 cursor-pointer" />
-                        {filePreview && (
-                          <p className="mt-2 text-xs text-blue-700 font-semibold flex items-center gap-1">
-                            <Paperclip className="w-3.5 h-3.5" /> Arquivo selecionado: {filePreview}
-                          </p>
-                        )}
-                      </div>
-                    </>
-                  )}
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">Usuário Responsável</label>
-                    <input required name="usuario" value={formData.usuario || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="Seu nome" />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">Observações / Conclusão</label>
-                    <textarea name="observacao" value={formData.observacao || ''} onChange={handleInputChange} rows="3" className="w-full border p-2 rounded text-sm"></textarea>
-                  </div>
-                </>
-              )}
-
-              <div className="pt-4 flex justify-end gap-3 border-t">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border rounded-lg text-sm text-slate-600">Cancelar</button>
-                <button type="submit" className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold">
-                  {editingId ? 'Salvar Alterações' : 'Enviar Registro'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+                        <input type="text" placeholder="Ex: CH-849201" value={filterChamado} onChange={(e) => setFilterChamado(e.target.
