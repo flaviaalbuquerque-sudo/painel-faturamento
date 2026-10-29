@@ -3,17 +3,788 @@ import { db } from './firebase';
 import { collection, addDoc, onSnapshot, updateDoc, doc, query, orderBy } from 'firebase/firestore';
 import { 
   AlertTriangle, Clock, PlusCircle, Search, ShieldAlert, 
-  FileCode, ChevronRight, X, Edit3, MessageSquare, Paperclip,
-  Home, Send, Filter, HelpCircle, CheckCircle2, ArrowRight,
-  Mail, Download, Image as ImageIcon, Bell, BellRing,
-  BarChart3, Activity, CheckCircle, Tag
+  FileCode, ChevronRight, X, Edit3, MessageSquare, Paperclip, 
+  Home, Send, Filter, HelpCircle, CheckCircle2, ArrowRight, 
+  Mail, Download, Image as ImageIcon, Bell, BellRing, 
+  BarChart3, Activity, CheckCircle, Tag, Database 
 } from 'lucide-react';
+
+const INITIAL_NTI_BACKUP = [
+  {
+    "numChamado": "NTI-1001",
+    "codAtendimento": "101",
+    "criticaErro": "Acesso ao módulo de Compras bloqueado para novos usuários do setor financeiro.",
+    "status": "Pendente",
+    "prioridade": "Média",
+    "sistema": "Sistemas",
+    "empresa": "Unimed Caruaru",
+    "convenio": "ClickUp",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Análise de perfil de acesso solicitada ao DBA.\nObs: Prioridade para o encerramento do mês\nLink: https://app.clickup.com/t/nti1001",
+    "createdAt": "2026-10-25T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1002",
+    "codAtendimento": "102",
+    "criticaErro": "Computador da recepção não liga após instabilidade na rede elétrica.",
+    "status": "Em Andamento",
+    "prioridade": "Média",
+    "sistema": "Hardware",
+    "empresa": "Unimed Caruaru",
+    "convenio": "E-mail",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Testada fonte de alimentação; necessária substituição da fonte ATX.\nResposta TI: Peça solicitada ao almoxarifado.\nObs: Equipamento reserva disponibilizado",
+    "createdAt": "2026-10-24T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1003",
+    "codAtendimento": "103",
+    "criticaErro": "Erro de autenticação no SEFAZ ao transmitir o lote do Easy Audit.",
+    "status": "Aguardando TI",
+    "prioridade": "Média",
+    "sistema": "Easy Audit",
+    "empresa": "Unimed Caruaru",
+    "convenio": "ClickUp",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Certificado digital A1 verificado. Testando revalidação da cadeia da ICP-Brasil.\nObs: Inconsistência recorrente na SEFAZ-SP\nLink: https://app.clickup.com/t/nti1003",
+    "createdAt": "2026-10-20T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1004",
+    "codAtendimento": "104",
+    "criticaErro": "Divergência de valores no relatório de DRE do ERP TOTVS.",
+    "status": "Aguardando Retorno",
+    "prioridade": "Média",
+    "sistema": "Sistemas",
+    "empresa": "Unimed Caruaru",
+    "convenio": "WhatsApp",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Ajustada query de consolidação e enviado relatório teste para conferência do usuário.\nResposta TI: Aguardando aprovação do gestor do setor.",
+    "createdAt": "2026-10-18T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1005",
+    "codAtendimento": "105",
+    "criticaErro": "Substituição de HD por SSD no notebook da diretoria.",
+    "status": "Concluído",
+    "prioridade": "Média",
+    "sistema": "Hardware",
+    "empresa": "Unimed Caruaru",
+    "convenio": "GLPI",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Clonagem do sistema efetuada e validação de desempenho OK.\nResposta TI: Equipamento entregue e testado.\nObs: Melhoria de performance de 300%",
+    "createdAt": "2026-10-10T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1006",
+    "codAtendimento": "106",
+    "criticaErro": "Inclusão de nova regra fiscal de retenção de ISS no módulo de faturamento.",
+    "status": "Em Andamento",
+    "prioridade": "Média",
+    "sistema": "Sistemas",
+    "empresa": "Unimed Caruaru",
+    "convenio": "ClickUp",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Regra criada no ambiente de homologação.\nObs: Mais de 5 dias parados aguardando homologação fiscal\nLink: https://app.clickup.com/t/nti1006",
+    "createdAt": "2026-10-05T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1007",
+    "codAtendimento": "107",
+    "criticaErro": "Divergência no cálculo de ICMS-ST no relatório de auditoria fiscal.",
+    "status": "Pendente",
+    "prioridade": "Alta",
+    "sistema": "Easy Audit",
+    "empresa": "Unimed Caruaru",
+    "convenio": "E-mail",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Aguardando abertura de chamado junto ao suporte da desenvolvedora do software.\nObs: Crítico: impacta apuração mensal",
+    "createdAt": "2026-09-28T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1008",
+    "codAtendimento": "108",
+    "criticaErro": "Impressora HP LaserJet travando papel constantemente no setor RH.",
+    "status": "Pendente",
+    "prioridade": "Média",
+    "sistema": "Hardware",
+    "empresa": "Unimed Caruaru",
+    "convenio": "Presencial",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Rolo tracionador limpo, porém desgaste acentuado detectado.\nResposta TI: Solicitada troca do kit de manutenção.",
+    "createdAt": "2026-10-22T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1009",
+    "codAtendimento": "109",
+    "criticaErro": "Falha na sincronização do estoque entre o E-commerce e o ERP.",
+    "status": "Aguardando TI",
+    "prioridade": "Média",
+    "sistema": "Sistemas",
+    "empresa": "Unimed Caruaru",
+    "convenio": "Telefone",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: API de integração apresentou timeout constante.\nLink: https://app.clickup.com/t/nti1009",
+    "createdAt": "2026-10-15T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1010",
+    "codAtendimento": "110",
+    "criticaErro": "Atualização da versão de tabelas do Sped Fiscal no Easy Audit.",
+    "status": "Concluído",
+    "prioridade": "Média",
+    "sistema": "Easy Audit",
+    "empresa": "Unimed Caruaru",
+    "convenio": "ClickUp",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Tabelas baixadas da Receita e aplicadas na base do banco.\nResposta TI: Atualização efetuada com sucesso.\nLink: https://app.clickup.com/t/nti1010",
+    "createdAt": "2026-10-01T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1011",
+    "codAtendimento": "111",
+    "criticaErro": "Monitor piscando na estação de trabalho do Marketing.",
+    "status": "Pendente",
+    "prioridade": "Média",
+    "sistema": "Hardware",
+    "empresa": "Unimed Caruaru",
+    "convenio": "E-mail",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Cabo HDMI substituído para teste inicial.",
+    "createdAt": "2026-10-26T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1012",
+    "codAtendimento": "112",
+    "criticaErro": "Desenvolvimento de relatório customizado de comissões de vendas.",
+    "status": "Em Andamento",
+    "prioridade": "Média",
+    "sistema": "Sistemas",
+    "empresa": "Unimed Caruaru",
+    "convenio": "ClickUp",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Query SQL concluída; criando layout em Crystal Reports.\nLink: https://app.clickup.com/t/nti1012",
+    "createdAt": "2026-10-14T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1013",
+    "codAtendimento": "113",
+    "criticaErro": "Validação de inconsistências do bloco K do Sped ICMS/IPI.",
+    "status": "Aguardando Retorno",
+    "prioridade": "Média",
+    "sistema": "Easy Audit",
+    "empresa": "Unimed Caruaru",
+    "convenio": "E-mail",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Arquivo corrigido enviado para conferência da contabilidade.\nResposta TI: Aguardando validação da equipe contábil.",
+    "createdAt": "2026-09-15T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1014",
+    "codAtendimento": "114",
+    "criticaErro": "Instalação de webcam para sala de reuniões 2.",
+    "status": "Concluído",
+    "prioridade": "Média",
+    "sistema": "Hardware",
+    "empresa": "Unimed Caruaru",
+    "convenio": "WhatsApp",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Webcam Logitech 4K instalada e configurada no Teams.\nResposta TI: Concluído.",
+    "createdAt": "2026-10-19T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1015",
+    "codAtendimento": "115",
+    "criticaErro": "Cadastro de novas alíquotas de PIS/COFINS nos produtos importados.",
+    "status": "Pendente",
+    "prioridade": "Média",
+    "sistema": "Sistemas",
+    "empresa": "Unimed Caruaru",
+    "convenio": "ClickUp",
+    "usuario": "NTI / TI",
+    "observacao": "Obs: Chamado parado há mais de 5 dias\nLink: https://app.clickup.com/t/nti1015",
+    "createdAt": "2026-10-08T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1016",
+    "codAtendimento": "116",
+    "criticaErro": "Nobreak do rack de servidores secundário apitando bateria fraca.",
+    "status": "Aguardando TI",
+    "prioridade": "Média",
+    "sistema": "Hardware",
+    "empresa": "Unimed Caruaru",
+    "convenio": "GLPI",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Baterias de chumbo seladas encomendadas.",
+    "createdAt": "2026-10-11T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1017",
+    "codAtendimento": "117",
+    "criticaErro": "Parametrização do módulo de importação de NFe por XML em lote.",
+    "status": "Em Andamento",
+    "prioridade": "Média",
+    "sistema": "Easy Audit",
+    "empresa": "Unimed Caruaru",
+    "convenio": "ClickUp",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Configurando pastas de monitoramento na rede.\nLink: https://app.clickup.com/t/nti1017",
+    "createdAt": "2026-10-21T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1018",
+    "codAtendimento": "118",
+    "criticaErro": "Solicitação duplicada de redefinição de senha corporativa.",
+    "status": "Cancelado",
+    "prioridade": "Média",
+    "sistema": "Sistemas",
+    "empresa": "Unimed Caruaru",
+    "convenio": "E-mail",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Chamado cancelado por ser duplicata.\nResposta TI: Atendido no chamado NTI-1017.",
+    "createdAt": "2026-10-02T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1019",
+    "codAtendimento": "119",
+    "criticaErro": "Cabo de rede danificado na bancada da expedição.",
+    "status": "Em Andamento",
+    "prioridade": "Média",
+    "sistema": "Hardware",
+    "empresa": "Unimed Caruaru",
+    "convenio": "Presencial",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Lançamento de novo patch cord de 5m.",
+    "createdAt": "2026-10-17T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1020",
+    "codAtendimento": "120",
+    "criticaErro": "Implementação de autenticação de dois fatores (2FA) no portal do cliente.",
+    "status": "Aguardando TI",
+    "prioridade": "Média",
+    "sistema": "Sistemas",
+    "empresa": "Unimed Caruaru",
+    "convenio": "ClickUp",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Analisando gateway de SMS / Authenticator app.\nLink: https://app.clickup.com/t/nti1020",
+    "createdAt": "2026-10-09T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1021",
+    "codAtendimento": "121",
+    "criticaErro": "Lentidão extrema na geração de relatórios de auditoria cruzada.",
+    "status": "Pendente",
+    "prioridade": "Média",
+    "sistema": "Easy Audit",
+    "empresa": "Unimed Caruaru",
+    "convenio": "E-mail",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Solicitado plano de execução ao DBA no banco Postgres.",
+    "createdAt": "2026-10-23T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1022",
+    "codAtendimento": "122",
+    "criticaErro": "Configuração de novo scanner de código de barras USB.",
+    "status": "Concluído",
+    "prioridade": "Média",
+    "sistema": "Hardware",
+    "empresa": "Unimed Caruaru",
+    "convenio": "GLPI",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Driver instalado e leitor bipando padrões EAN-13.\nResposta TI: OK.",
+    "createdAt": "2026-10-13T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1023",
+    "codAtendimento": "123",
+    "criticaErro": "Ajuste na rotina de faturamento de serviços recorrentes.",
+    "status": "Aguardando Retorno",
+    "prioridade": "Média",
+    "sistema": "Sistemas",
+    "empresa": "Unimed Caruaru",
+    "convenio": "ClickUp",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Script executado em homologação. Solicitada validação do faturamento.\nResposta TI: Aguardando retorno do setor há 8 dias.\nLink: https://app.clickup.com/t/nti1023",
+    "createdAt": "2026-10-03T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1024",
+    "codAtendimento": "124",
+    "criticaErro": "Teclado sem fio do projetor da sala de treinamento não responde.",
+    "status": "Em Andamento",
+    "prioridade": "Média",
+    "sistema": "Hardware",
+    "empresa": "Unimed Caruaru",
+    "convenio": "WhatsApp",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Pilhas trocadas; verificando pareamento Bluetooth.",
+    "createdAt": "2026-10-24T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1025",
+    "codAtendimento": "125",
+    "criticaErro": "Importação de registros fiscais da filial Curitiba falhando.",
+    "status": "Pendente",
+    "prioridade": "Média",
+    "sistema": "Easy Audit",
+    "empresa": "Unimed Caruaru",
+    "convenio": "ClickUp",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Verificado erro de parseamento na linha 402 do arquivo TXT.\nObs: Parado há bastante tempo\nLink: https://app.clickup.com/t/nti1025",
+    "createdAt": "2026-09-30T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1026",
+    "codAtendimento": "126",
+    "criticaErro": "Liberar IP do usuário no firewall para acesso ao ERP via VPN.",
+    "status": "Concluído",
+    "prioridade": "Média",
+    "sistema": "Sistemas",
+    "empresa": "Unimed Caruaru",
+    "convenio": "Telefone",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Regra liberada no Fortigate.\nResposta TI: Acesso funcionando.",
+    "createdAt": "2026-10-22T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1027",
+    "codAtendimento": "127",
+    "criticaErro": "Ponto de rede sem sinal na sala do jurídico.",
+    "status": "Aguardando TI",
+    "prioridade": "Média",
+    "sistema": "Hardware",
+    "empresa": "Unimed Caruaru",
+    "convenio": "E-mail",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Mapeamento no patch panel necessário.",
+    "createdAt": "2026-10-16T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1028",
+    "codAtendimento": "128",
+    "criticaErro": "Ajuste na integração de pedidos do CRM para o ERP.",
+    "status": "Em Andamento",
+    "prioridade": "Média",
+    "sistema": "Sistemas",
+    "empresa": "Unimed Caruaru",
+    "convenio": "ClickUp",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Ajustando mapeamento de campos JSON.\nLink: https://app.clickup.com/t/nti1028",
+    "createdAt": "2026-10-07T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1029",
+    "codAtendimento": "129",
+    "criticaErro": "Inconsistência nos totais de entrada de mercadorias para revenda.",
+    "status": "Pendente",
+    "prioridade": "Média",
+    "sistema": "Easy Audit",
+    "empresa": "Unimed Caruaru",
+    "convenio": "E-mail",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Em análise inicial.",
+    "createdAt": "2026-10-20T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1030",
+    "codAtendimento": "130",
+    "criticaErro": "Troca de fonte queimada no desktop do arquivo central.",
+    "status": "Concluído",
+    "prioridade": "Média",
+    "sistema": "Hardware",
+    "empresa": "Unimed Caruaru",
+    "convenio": "GLPI",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Fonte de 500W trocada e micro funcionando perfeitamente.\nResposta TI: Entregue.",
+    "createdAt": "2026-10-04T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1031",
+    "codAtendimento": "131",
+    "criticaErro": "Erro ao gerar PDF de espelho de nota fiscal no módulo fiscal.",
+    "status": "Pendente",
+    "prioridade": "Média",
+    "sistema": "Sistemas",
+    "empresa": "Unimed Caruaru",
+    "convenio": "WhatsApp",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Analisando dll Crystal Reports no servidor de aplicação.",
+    "createdAt": "2026-10-25T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1032",
+    "codAtendimento": "132",
+    "criticaErro": "Suporte na conciliação bancária automática com arquivo OFX.",
+    "status": "Em Andamento",
+    "prioridade": "Média",
+    "sistema": "Easy Audit",
+    "empresa": "Unimed Caruaru",
+    "convenio": "ClickUp",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Ajustando parser de extratos do banco Itaú.\nLink: https://app.clickup.com/t/nti1032",
+    "createdAt": "2026-10-18T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1033",
+    "codAtendimento": "133",
+    "criticaErro": "Notebook esquentando e desligando sozinho após 20 min de uso.",
+    "status": "Aguardando TI",
+    "prioridade": "Alta",
+    "sistema": "Hardware",
+    "empresa": "Unimed Caruaru",
+    "convenio": "Presencial",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Aguardando chegada de pasta térmica de prata e cooler novo.\nObs: Crítico: equipamento paralisado",
+    "createdAt": "2026-09-25T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1034",
+    "codAtendimento": "134",
+    "criticaErro": "Aumento do limite de cota de armazenamento na pasta de rede da Engenharia.",
+    "status": "Concluído",
+    "prioridade": "Média",
+    "sistema": "Sistemas",
+    "empresa": "Unimed Caruaru",
+    "convenio": "ClickUp",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Cota expandida de 50GB para 200GB no Storage.\nResposta TI: Concluído.\nLink: https://app.clickup.com/t/nti1034",
+    "createdAt": "2026-10-21T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1035",
+    "codAtendimento": "135",
+    "criticaErro": "Configuração de segundo monitor no computador da contabilidade.",
+    "status": "Aguardando Retorno",
+    "prioridade": "Média",
+    "sistema": "Hardware",
+    "empresa": "Unimed Caruaru",
+    "convenio": "E-mail",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Adaptador DisplayPort instalado. Teste enviado para usuária.\nResposta TI: Aguardando confirmação.",
+    "createdAt": "2026-10-12T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1036",
+    "codAtendimento": "136",
+    "criticaErro": "Migração da base de dados do módulo de compras para nuvem AWS.",
+    "status": "Em Andamento",
+    "prioridade": "Média",
+    "sistema": "Sistemas",
+    "empresa": "Unimed Caruaru",
+    "convenio": "ClickUp",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Sincronização do RDS Postgres executada em 80%.\nLink: https://app.clickup.com/t/nti1036",
+    "createdAt": "2026-10-06T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1037",
+    "codAtendimento": "137",
+    "criticaErro": "Consulta de chave de acesso NFe retornando rejeição 217.",
+    "status": "Pendente",
+    "prioridade": "Média",
+    "sistema": "Easy Audit",
+    "empresa": "Unimed Caruaru",
+    "convenio": "E-mail",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Verificando ambiente de produção do SEFAZ nacional.",
+    "createdAt": "2026-10-23T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1038",
+    "codAtendimento": "138",
+    "criticaErro": "Troca de bateria de filtro de linha na sala da gerência.",
+    "status": "Concluído",
+    "prioridade": "Média",
+    "sistema": "Hardware",
+    "empresa": "Unimed Caruaru",
+    "convenio": "GLPI",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Filtro substituído por novo modelo com proteção contra surtos.\nResposta TI: Finalizado.",
+    "createdAt": "2026-10-15T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1039",
+    "codAtendimento": "139",
+    "criticaErro": "Reset de senha do usuário supervisor de logística.",
+    "status": "Aguardando TI",
+    "prioridade": "Média",
+    "sistema": "Sistemas",
+    "empresa": "Unimed Caruaru",
+    "convenio": "WhatsApp",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Aguardando liberação de autorização do gerente do setor.",
+    "createdAt": "2026-10-10T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1040",
+    "codAtendimento": "140",
+    "criticaErro": "Auditoria na tabela de alíquotas do cadastro geral de itens.",
+    "status": "Em Andamento",
+    "prioridade": "Média",
+    "sistema": "Easy Audit",
+    "empresa": "Unimed Caruaru",
+    "convenio": "ClickUp",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Script em execução na base de homologação.\nObs: Projeto extenso de revisão fiscal\nLink: https://app.clickup.com/t/nti1040",
+    "createdAt": "2026-09-20T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1041",
+    "codAtendimento": "141",
+    "criticaErro": "Cabo de alimentação do servidor de arquivos com mau contato.",
+    "status": "Pendente",
+    "prioridade": "Média",
+    "sistema": "Hardware",
+    "empresa": "Unimed Caruaru",
+    "convenio": "Presencial",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Verificando régua de tomadas no Rack A.",
+    "createdAt": "2026-10-26T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1042",
+    "codAtendimento": "142",
+    "criticaErro": "Criação de novos relatórios em BI no PowerBI para diretoria.",
+    "status": "Concluído",
+    "prioridade": "Média",
+    "sistema": "Sistemas",
+    "empresa": "Unimed Caruaru",
+    "convenio": "ClickUp",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Dashboards criados e publicados na workspace corporativa.\nResposta TI: Links compartilhados.\nLink: https://app.clickup.com/t/nti1042",
+    "createdAt": "2026-10-17T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1043",
+    "codAtendimento": "143",
+    "criticaErro": "Troca de HD do computador do faturamento que apresenta bad sectors.",
+    "status": "Aguardando TI",
+    "prioridade": "Média",
+    "sistema": "Hardware",
+    "empresa": "Unimed Caruaru",
+    "convenio": "E-mail",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: HD SSD encomendado no fornecedor.",
+    "createdAt": "2026-10-08T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1044",
+    "codAtendimento": "144",
+    "criticaErro": "Divergência na apuração do PIS e COFINS não cumulativos.",
+    "status": "Aguardando Retorno",
+    "prioridade": "Média",
+    "sistema": "Easy Audit",
+    "empresa": "Unimed Caruaru",
+    "convenio": "ClickUp",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Planilha de conciliação enviada ao contador interno.\nResposta TI: Aguardando validação dos cálculos.\nLink: https://app.clickup.com/t/nti1044",
+    "createdAt": "2026-10-14T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1045",
+    "codAtendimento": "145",
+    "criticaErro": "Ajuste do layout de boleto bancário do Banco do Brasil com PIX QR Code.",
+    "status": "Em Andamento",
+    "prioridade": "Média",
+    "sistema": "Sistemas",
+    "empresa": "Unimed Caruaru",
+    "convenio": "E-mail",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Homologando código de barras e chave PIX com a agência.\nObs: Projeto de melhoria de arrecadação",
+    "createdAt": "2026-10-02T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1046",
+    "codAtendimento": "146",
+    "criticaErro": "Formatação e reinstalação de SO em computador de novo estagiário.",
+    "status": "Concluído",
+    "prioridade": "Média",
+    "sistema": "Hardware",
+    "empresa": "Unimed Caruaru",
+    "convenio": "GLPI",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Windows 11 + pacote Office e ERP instalados.\nResposta TI: Pronto para uso.",
+    "createdAt": "2026-10-22T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1047",
+    "codAtendimento": "147",
+    "criticaErro": "Falha na geração de lote para a consulta do EFD-Reinf.",
+    "status": "Pendente",
+    "prioridade": "Média",
+    "sistema": "Easy Audit",
+    "empresa": "Unimed Caruaru",
+    "convenio": "ClickUp",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Analisando esquema XSD da Receita Federal.\nLink: https://app.clickup.com/t/nti1047",
+    "createdAt": "2026-10-19T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1048",
+    "codAtendimento": "148",
+    "criticaErro": "Configuração de e-mail institucional corporativo no smartphone.",
+    "status": "Aguardando TI",
+    "prioridade": "Média",
+    "sistema": "Sistemas",
+    "empresa": "Unimed Caruaru",
+    "convenio": "WhatsApp",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Agendado atendimento presencial com o colaborador.",
+    "createdAt": "2026-10-11T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1049",
+    "codAtendimento": "149",
+    "criticaErro": "Troca de placa de rede PCI Express do micro da recepção 2.",
+    "status": "Concluído",
+    "prioridade": "Média",
+    "sistema": "Hardware",
+    "empresa": "Unimed Caruaru",
+    "convenio": "Presencial",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Placa substituída e rede Gigabit operando a 1000Mbps.\nResposta TI: Finalizado.",
+    "createdAt": "2026-10-05T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1050",
+    "codAtendimento": "150",
+    "criticaErro": "Importação de catálogo de fornecedores no ERP via arquivo Excel.",
+    "status": "Em Andamento",
+    "prioridade": "Média",
+    "sistema": "Sistemas",
+    "empresa": "Unimed Caruaru",
+    "convenio": "ClickUp",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Ajustando formato das colunas do modelo da carga.\nLink: https://app.clickup.com/t/nti1050",
+    "createdAt": "2026-10-25T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1051",
+    "codAtendimento": "151",
+    "criticaErro": "Auditoria de registros de entradas de notas fiscais de serviço (NFS-e).",
+    "status": "Pendente",
+    "prioridade": "Média",
+    "sistema": "Easy Audit",
+    "empresa": "Unimed Caruaru",
+    "convenio": "E-mail",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Processamento de lote pendente na fila.\nObs: Parado há mais de 30 dias",
+    "createdAt": "2026-09-18T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1052",
+    "codAtendimento": "152",
+    "criticaErro": "Troca de toner da impressora multifuncional da Recepção.",
+    "status": "Concluído",
+    "prioridade": "Média",
+    "sistema": "Hardware",
+    "empresa": "Unimed Caruaru",
+    "convenio": "GLPI",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Toner substituído e página de teste impressa com nitidez.\nResposta TI: Concluído.",
+    "createdAt": "2026-10-20T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1053",
+    "codAtendimento": "153",
+    "criticaErro": "Verificação de inconsistência de saldo de inventário no depósito B.",
+    "status": "Aguardando Retorno",
+    "prioridade": "Média",
+    "sistema": "Sistemas",
+    "empresa": "Unimed Caruaru",
+    "convenio": "ClickUp",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Ajuste de inventário rodado em homologação. Solicitada conferência física.\nResposta TI: Aguardando contagem do estoque físico.\nLink: https://app.clickup.com/t/nti1053",
+    "createdAt": "2026-10-13T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1054",
+    "codAtendimento": "154",
+    "criticaErro": "Instalação de switch de 24 portas no rack do 2º andar.",
+    "status": "Em Andamento",
+    "prioridade": "Média",
+    "sistema": "Hardware",
+    "empresa": "Unimed Caruaru",
+    "convenio": "E-mail",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Switch montado no rack; patch cables sendo organizados.",
+    "createdAt": "2026-10-09T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1055",
+    "codAtendimento": "155",
+    "criticaErro": "Validar parâmetro de conversão de unidade de medida para o Sped.",
+    "status": "Pendente",
+    "prioridade": "Média",
+    "sistema": "Easy Audit",
+    "empresa": "Unimed Caruaru",
+    "convenio": "ClickUp",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Análise das tabelas de conversão de KG para UNID.\nLink: https://app.clickup.com/t/nti155",
+    "createdAt": "2026-10-24T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1056",
+    "codAtendimento": "156",
+    "criticaErro": "Liberar acesso de usuário à pasta compartilhada do Marketing.",
+    "status": "Concluído",
+    "prioridade": "Média",
+    "sistema": "Sistemas",
+    "empresa": "Unimed Caruaru",
+    "convenio": "WhatsApp",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Adicionado usuário ao grupo Active Directory correspondente.\nResposta TI: Acesso liberado.",
+    "createdAt": "2026-10-16T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1057",
+    "codAtendimento": "157",
+    "criticaErro": "Substituição de nobreak queimado da mesa da diretoria.",
+    "status": "Aguardando TI",
+    "prioridade": "Média",
+    "sistema": "Hardware",
+    "empresa": "Unimed Caruaru",
+    "convenio": "Presencial",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Orçamento de novo nobreak Senoidal 1500VA aprovado.\nResposta TI: Aguardando entrega do fornecedor.",
+    "createdAt": "2026-10-03T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1058",
+    "codAtendimento": "158",
+    "criticaErro": "Ajuste de acentos e caracteres especiais na emissão de etiquetas Zebra.",
+    "status": "Em Andamento",
+    "prioridade": "Média",
+    "sistema": "Sistemas",
+    "empresa": "Unimed Caruaru",
+    "convenio": "ClickUp",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Ajustando tabela de código de caracteres ZPL no servidor.\nLink: https://app.clickup.com/t/nti1058",
+    "createdAt": "2026-10-21T09:00:00.000Z"
+  },
+  {
+    "numChamado": "NTI-1059",
+    "codAtendimento": "159",
+    "criticaErro": "Conferência das regras de PIS/COFINS de entradas de ativo imobilizado.",
+    "status": "Pendente",
+    "prioridade": "Média",
+    "sistema": "Easy Audit",
+    "empresa": "Unimed Caruaru",
+    "convenio": "E-mail",
+    "usuario": "NTI / TI",
+    "observacao": "Tratativa: Aguardando envio das notas explicativas da contabilidade.\nObs: Aberto hoje",
+    "createdAt": "2026-10-26T09:00:00.000Z"
+  }
+];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('inicio');
   const [items, setItems] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [importingNti, setImportingNti] = useState(false);
 
   // Modal para Visualizar Anexo
   const [viewAnexo, setViewAnexo] = useState(null);
@@ -78,7 +849,6 @@ export default function App() {
           altaPrioridade = docs.filter(d => d.prioridade === 'Alta' && d.status !== 'Concluído').length;
         }
 
-        // Checar se entrou nova demanda para disparar notificação
         if (previousTotalRef.current[colName] !== undefined && total > previousTotalRef.current[colName]) {
           if (Notification.permission === 'granted') {
             new Notification('🔔 Nova Demanda Registrada!', {
@@ -112,6 +882,23 @@ export default function App() {
     });
     return () => unsubscribe();
   }, [activeTab]);
+
+  // Função para importar em lote os 59 chamados do backup
+  const handleImportBackup = async () => {
+    if (!window.confirm("Deseja importar os 59 chamados NTI do backup para a coleção de Críticas e Erros?")) return;
+    setImportingNti(true);
+    try {
+      for (const item of INITIAL_NTI_BACKUP) {
+        await addDoc(collection(db, 'criticas'), item);
+      }
+      alert("✅ 59 Chamados NTI importados com sucesso para Críticas e Erros!");
+    } catch (err) {
+      console.error("Erro ao importar backup:", err);
+      alert("Erro ao importar os chamados para o banco de dados.");
+    } finally {
+      setImportingNti(false);
+    }
+  };
 
   const toggleNotifications = () => {
     if (!('Notification' in window)) {
@@ -322,7 +1109,6 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-slate-100 text-slate-800 font-sans">
-      {/* Sidebar Lateral */}
       <aside className="w-64 bg-emerald-950 text-white flex flex-col justify-between shadow-xl">
         <div>
           <div className="p-6 border-b border-emerald-900 flex flex-col items-start gap-2">
@@ -425,13 +1211,9 @@ export default function App() {
         </div>
       </aside>
 
-      {/* Conteúdo Principal */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        
-        {/* PÁGINA PRINCIPAL */}
         {activeTab === 'inicio' ? (
           <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-slate-50">
-            
             <div className="bg-gradient-to-r from-emerald-900 to-emerald-800 rounded-2xl p-8 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="space-y-3 max-w-2xl">
                 <div className="inline-flex items-center gap-2 bg-emerald-700/50 px-3 py-1 rounded-full text-xs font-semibold text-emerald-200 border border-emerald-600">
@@ -448,7 +1230,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* DASHBOARD EM TEMPO REAL */}
             <div className="space-y-4">
               <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                 <BarChart3 className="w-5 h-5 text-emerald-600" /> Status Geral das Demandas (Tempo Real)
@@ -489,11 +1270,10 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Detalhamento por Módulo */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-2">
                   <div className="flex justify-between items-center border-b pb-2">
-                    <span className="font-bold text-xs text-slate-800">Críticas e Erros (Chamados NTI)</span>
+                    <span className="font-bold text-xs text-slate-800">Críticas e Erros (NTI)</span>
                     <span className="text-xs font-mono font-bold bg-slate-100 px-2 py-0.5 rounded">{dashStats.criticas.total} total</span>
                   </div>
                   <div className="text-xs space-y-1 text-slate-600">
@@ -544,7 +1324,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Atalhos Rápidos */}
             <div>
               <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
                 <ArrowRight className="w-5 h-5 text-emerald-600" /> Módulos Operacionais
@@ -596,7 +1375,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Canal de Sugestões / Feedback */}
             <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm max-w-3xl">
               <div className="flex items-center gap-3 border-b pb-4 mb-4">
                 <div className="p-3 bg-emerald-100 text-emerald-800 rounded-xl">
@@ -649,7 +1427,6 @@ export default function App() {
             </div>
           </div>
         ) : (
-          /* TABELAS E FILTROS */
           <>
             <header className="bg-white border-b px-8 py-5 flex justify-between items-center shadow-sm">
               <div>
@@ -666,17 +1443,27 @@ export default function App() {
                 </p>
               </div>
 
-              <button
-                onClick={handleOpenNewModal}
-                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg shadow font-medium text-sm transition"
-              >
-                <PlusCircle className="w-5 h-5" /> {activeTab === 'chamados' ? 'Abrir Novo Chamado' : 'Novo Registro'}
-              </button>
+              <div className="flex items-center gap-3">
+                {activeTab === 'criticas' && (
+                  <button
+                    onClick={handleImportBackup}
+                    disabled={importingNti}
+                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white px-4 py-2.5 rounded-lg shadow font-medium text-sm transition"
+                  >
+                    <Database className="w-4 h-4" /> {importingNti ? 'Importando 59 Chamados...' : 'Importar Backup NTI (59)'}
+                  </button>
+                )}
+
+                <button
+                  onClick={handleOpenNewModal}
+                  className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg shadow font-medium text-sm transition"
+                >
+                  <PlusCircle className="w-5 h-5" /> {activeTab === 'chamados' ? 'Abrir Novo Chamado' : 'Novo Registro'}
+                </button>
+              </div>
             </header>
 
             <div className="p-8 flex-1 overflow-y-auto space-y-6">
-              
-              {/* Filtros */}
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
                 <div className="flex items-center justify-between border-b pb-2">
                   <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-2">
@@ -734,7 +1521,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Tabela de Dados */}
               <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 <table className="w-full text-left text-sm text-slate-600">
                   <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500 font-semibold">
@@ -961,7 +1747,6 @@ export default function App() {
         )}
       </main>
 
-      {/* Modal para Visualizar Imagem do Anexo */}
       {viewAnexo && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full overflow-hidden flex flex-col max-h-[90vh]">
@@ -994,7 +1779,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Modal de Formulário de Cadastro/Edição */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden">
@@ -1008,8 +1792,6 @@ export default function App() {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-              
-              {/* Form Chamados Internos */}
               {activeTab === 'chamados' && (
                 <>
                   <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex items-center justify-between">
@@ -1093,7 +1875,6 @@ export default function App() {
                 </>
               )}
 
-              {/* Form Críticas e Erros (Chamados NTI) */}
               {activeTab === 'criticas' && (
                 <>
                   <div className="grid grid-cols-2 gap-4">
@@ -1170,7 +1951,6 @@ export default function App() {
                 </>
               )}
 
-              {/* Form Outras Abas */}
               {activeTab === 'sem_valor' && (
                 <>
                   <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
