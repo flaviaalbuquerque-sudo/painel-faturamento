@@ -2,11 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { db } from './firebase';
 import { collection, addDoc, onSnapshot, updateDoc, doc, query, orderBy } from 'firebase/firestore';
 import { 
-  AlertTriangle, Clock, PlusCircle, Search, ShieldAlert, 
+  AlertTriangle, Clock, PlusCircle, ShieldAlert, 
   FileCode, ChevronRight, X, Edit3, MessageSquare, Paperclip,
-  Home, Send, Filter, HelpCircle, CheckCircle2, ArrowRight,
+  Home, Send, Filter, ArrowRight,
   Mail, Download, Image as ImageIcon, Bell, BellRing,
-  BarChart3, Activity, CheckCircle, Tag
+  BarChart3, Activity, CheckCircle
 } from 'lucide-react';
 
 export default function App() {
@@ -24,7 +24,7 @@ export default function App() {
 
   // Estatísticas Globais do Dashboard
   const [dashStats, setDashStats] = useState({
-    criticas: { total: 0, pendente: 0, andamento: 0, aguardandoTi: 0, concluido: 0 },
+    criticas: { total: 0, pendente: 0, andamento: 0, concluido: 0 },
     sem_valor: { total: 0, pendente: 0, andamento: 0, concluido: 0, slaEstourado: 0 },
     sem_tuss: { total: 0, pendente: 0, andamento: 0, concluido: 0, slaEstourado: 0 },
     chamados: { total: 0, pendente: 0, andamento: 0, concluido: 0, altaPrioridade: 0 }
@@ -78,7 +78,6 @@ export default function App() {
           altaPrioridade = docs.filter(d => d.prioridade === 'Alta' && d.status !== 'Concluído').length;
         }
 
-        // Checar se entrou nova demanda para disparar notificação
         if (previousTotalRef.current[colName] !== undefined && total > previousTotalRef.current[colName]) {
           if (Notification.permission === 'granted') {
             new Notification('🔔 Nova Demanda Registrada!', {
@@ -194,8 +193,12 @@ export default function App() {
   const handleOpenNewModal = () => {
     setEditingId(null);
     setFilePreview(null);
-    const novoCodigoChamado = `CH-${Math.floor(100000 + Math.random() * 900000)}`;
-    setFormData({ codChamado: novoCodigoChamado, prioridade: 'Média', sistema: 'SoulMV', tipoChamado: 'Falha', status: 'Pendente' });
+    if (activeTab === 'chamados') {
+      const novoCodigoChamado = `CH-${Math.floor(100000 + Math.random() * 900000)}`;
+      setFormData({ codChamado: novoCodigoChamado, prioridade: 'Média', sistema: 'SoulMV', tipoChamado: 'Falha', status: 'Pendente' });
+    } else {
+      setFormData({ status: 'Pendente', sistema: 'SoulMV' });
+    }
     setIsModalOpen(true);
   };
 
@@ -278,15 +281,13 @@ export default function App() {
         const queryStr = filterProfat.toLowerCase();
         const profatMatch = String(item.profat || '').toLowerCase().includes(queryStr) ||
                             String(item.criticaErro || '').toLowerCase().includes(queryStr) ||
-                            String(item.numChamado || '').toLowerCase().includes(queryStr) ||
                             String(item.codAtendimento || '').toLowerCase().includes(queryStr);
         if (!profatMatch) return false;
       }
 
       if (filterChamado.trim() !== '') {
         const chamadoMatch = String(item.codChamado || '').toLowerCase().includes(filterChamado.toLowerCase()) ||
-                             String(item.tituloChamado || '').toLowerCase().includes(filterChamado.toLowerCase()) ||
-                             String(item.numChamado || '').toLowerCase().includes(filterChamado.toLowerCase());
+                             String(item.tituloChamado || '').toLowerCase().includes(filterChamado.toLowerCase());
         if (!chamadoMatch) return false;
       }
 
@@ -374,7 +375,7 @@ export default function App() {
             >
               <div className="flex items-center gap-3">
                 <AlertTriangle className="w-5 h-5 text-amber-400" />
-                <span>Críticas e Erros (NTI)</span>
+                <span>Críticas e Erros</span>
               </div>
               <ChevronRight className="w-4 h-4 opacity-50" />
             </button>
@@ -431,7 +432,6 @@ export default function App() {
         {/* PÁGINA PRINCIPAL */}
         {activeTab === 'inicio' ? (
           <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-slate-50">
-            
             <div className="bg-gradient-to-r from-emerald-900 to-emerald-800 rounded-2xl p-8 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="space-y-3 max-w-2xl">
                 <div className="inline-flex items-center gap-2 bg-emerald-700/50 px-3 py-1 rounded-full text-xs font-semibold text-emerald-200 border border-emerald-600">
@@ -468,7 +468,7 @@ export default function App() {
 
                 <div className="bg-white p-5 rounded-2xl border border-blue-200 shadow-sm flex items-center justify-between">
                   <div>
-                    <span className="text-xs font-bold text-blue-700 uppercase tracking-wider block">Em Andamento / TI</span>
+                    <span className="text-xs font-bold text-blue-700 uppercase tracking-wider block">Em Andamento</span>
                     <span className="text-3xl font-extrabold text-blue-950">{totalEmAndamentoGeral}</span>
                     <span className="text-xs text-slate-500 block mt-1">Em tratativa técnica</span>
                   </div>
@@ -493,13 +493,12 @@ export default function App() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-2">
                   <div className="flex justify-between items-center border-b pb-2">
-                    <span className="font-bold text-xs text-slate-800">Críticas e Erros (Chamados NTI)</span>
+                    <span className="font-bold text-xs text-slate-800">Críticas e Erros</span>
                     <span className="text-xs font-mono font-bold bg-slate-100 px-2 py-0.5 rounded">{dashStats.criticas.total} total</span>
                   </div>
                   <div className="text-xs space-y-1 text-slate-600">
                     <div className="flex justify-between"><span>Pendentes:</span> <strong className="text-amber-600">{dashStats.criticas.pendente}</strong></div>
                     <div className="flex justify-between"><span>Em Andamento:</span> <strong className="text-blue-600">{dashStats.criticas.andamento}</strong></div>
-                    <div className="flex justify-between"><span>Aguardando TI:</span> <strong className="text-purple-600">{dashStats.criticas.aguardandoTi}</strong></div>
                     <div className="flex justify-between"><span>Concluídos:</span> <strong className="text-emerald-600">{dashStats.criticas.concluido}</strong></div>
                   </div>
                 </div>
@@ -555,8 +554,8 @@ export default function App() {
                     <div className="w-12 h-12 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                       <AlertTriangle className="w-6 h-6 text-amber-600" />
                     </div>
-                    <h3 className="font-bold text-slate-800 text-lg group-hover:text-emerald-700 transition">Críticas e Erros (NTI)</h3>
-                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">Acompanhamento de críticas e controle de chamados abertos junto à NTI.</p>
+                    <h3 className="font-bold text-slate-800 text-lg group-hover:text-emerald-700 transition">Críticas e Erros</h3>
+                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">Registro e controle interno de críticas e inconsistências do faturamento.</p>
                   </div>
                   <span className="text-xs font-bold text-emerald-600 mt-4 flex items-center gap-1 group-hover:underline">Acessar Módulo <ChevronRight className="w-3.5 h-3.5" /></span>
                 </div>
@@ -654,15 +653,15 @@ export default function App() {
             <header className="bg-white border-b px-8 py-5 flex justify-between items-center shadow-sm">
               <div>
                 <h2 className="text-2xl font-bold text-slate-800">
-                  {activeTab === 'criticas' && 'Gestão de Críticas, Erros e Chamados NTI'}
+                  {activeTab === 'criticas' && 'Gestão de Críticas e Erros'}
                   {activeTab === 'sem_valor' && 'Procedimentos Sem Valor (Alerta SLA 48h)'}
                   {activeTab === 'sem_tuss' && 'Procedimentos Sem TUSS (Alerta SLA 24h & Mat./Med.)'}
                   {activeTab === 'chamados' && 'Central de Chamados e Suporte Interno'}
                 </h2>
                 <p className="text-sm text-slate-500">
-                  {activeTab === 'criticas' ? 'Acompanhamento integrado de inconsistências e suporte junto à NTI' : 
+                  {activeTab === 'criticas' ? 'Acompanhamento e registro de críticas e inconsistências de faturamento' : 
                    activeTab === 'chamados' ? 'Abertura, controle e acompanhamento de solicitações internas' : 
-                   'Acompanhamento e resolução de chamados e pendências'}
+                   'Acompanhamento e resolução de pendências'}
                 </p>
               </div>
 
@@ -692,10 +691,9 @@ export default function App() {
                       <option value="Todos">Todos os Status</option>
                       <option value="Pendente">1. Pendente / Aberto</option>
                       <option value="Em Andamento">2. Em Andamento</option>
-                      <option value="Aguardando TI">3. Aguardando TI</option>
-                      <option value="Aguardando Retorno">4. Aguardando Retorno do Usuário</option>
-                      <option value="Concluído">5. Concluído</option>
-                      <option value="Cancelado">6. Cancelado</option>
+                      <option value="Aguardando Retorno">3. Aguardando Retorno</option>
+                      <option value="Concluído">4. Concluído</option>
+                      <option value="Cancelado">5. Cancelado</option>
                     </select>
                   </div>
 
@@ -717,8 +715,8 @@ export default function App() {
                     </>
                   ) : (
                     <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1">Buscar por Nº Chamado NTI / Atendimento / Crítica</label>
-                      <input type="text" placeholder="Digite Nº Chamado NTI, PROFAT ou texto..." value={filterProfat} onChange={(e) => setFilterProfat(e.target.value)} className="w-full border p-2 rounded-lg text-sm" />
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Buscar por Atendimento / Crítica / Texto</label>
+                      <input type="text" placeholder="Digite atendimento ou palavra-chave..." value={filterProfat} onChange={(e) => setFilterProfat(e.target.value)} className="w-full border p-2 rounded-lg text-sm" />
                     </div>
                   )}
 
@@ -751,11 +749,10 @@ export default function App() {
                         </>
                       ) : (
                         <>
-                          <th className="p-4">Atendimento / Nº Chamado NTI</th>
+                          <th className="p-4">Atendimento</th>
                           {activeTab === 'criticas' && (
                             <>
                               <th className="p-4">Crítica / Erro</th>
-                              <th className="p-4">Prioridade</th>
                               <th className="p-4">Sistema</th>
                               <th className="p-4">Empresa / Convênio</th>
                             </>
@@ -803,7 +800,6 @@ export default function App() {
                                 className={`text-xs font-semibold px-2.5 py-1 rounded-full border shadow-sm outline-none cursor-pointer ${
                                   item.status === 'Concluído' ? 'bg-slate-100 text-slate-600 border-slate-300' :
                                   item.status === 'Em Andamento' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                  item.status === 'Aguardando TI' ? 'bg-purple-50 text-purple-700 border-purple-200' :
                                   item.status === 'Aguardando Retorno' ? 'bg-orange-50 text-orange-700 border-orange-200' :
                                   item.status === 'Cancelado' ? 'bg-red-50 text-red-700 border-red-200' :
                                   'bg-amber-50 text-amber-800 border-amber-300'
@@ -811,8 +807,7 @@ export default function App() {
                               >
                                 <option value="Pendente">🟡 Pendente / Aberto</option>
                                 <option value="Em Andamento">🔵 Em Andamento</option>
-                                <option value="Aguardando TI">🟣 Aguardando TI</option>
-                                <option value="Aguardando Retorno">🟠 Aguardando Retorno do Usuário</option>
+                                <option value="Aguardando Retorno">🟠 Aguardando Retorno</option>
                                 <option value="Concluído">🟢 Concluído</option>
                                 <option value="Cancelado">⚪ Cancelado</option>
                               </select>
@@ -863,26 +858,13 @@ export default function App() {
                             ) : (
                               <>
                                 <td className="p-4 font-mono text-xs font-semibold text-slate-700">
-                                  <div>Atend: {item.codAtendimento || '-'}</div>
-                                  {item.numChamado && (
-                                    <div className="text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 mt-1 w-max font-bold">
-                                      Chamado NTI: #{item.numChamado}
-                                    </div>
-                                  )}
+                                  {item.codAtendimento || '-'}
                                 </td>
 
                                 {activeTab === 'criticas' && (
                                   <>
                                     <td className="p-4 font-medium text-slate-800">{item.criticaErro}</td>
-                                    <td className="p-4">
-                                      <span className={`px-2 py-1 text-xs rounded font-bold ${
-                                        item.prioridade === 'Alta' ? 'bg-red-100 text-red-700' :
-                                        item.prioridade === 'Média' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700'
-                                      }`}>
-                                        {item.prioridade || 'Normal'}
-                                      </span>
-                                    </td>
-                                    <td className="p-4">{item.sistema}</td>
+                                    <td className="p-4">{item.sistema || 'SoulMV'}</td>
                                     <td className="p-4">{item.empresa || '-'} / {item.convenio || '-'}</td>
                                   </>
                                 )}
@@ -943,10 +925,10 @@ export default function App() {
                                 <Edit3 className="w-3.5 h-3.5" /> Editar
                               </button>
                               <button 
-                                onClick={() => alert(`Detalhes / Tratativa NTI:\n\n${item.observacao || item.descritivoChamado || 'Sem observações adicionais.'}`)}
+                                onClick={() => alert(`Detalhes / Observações:\n\n${item.observacao || item.descritivoChamado || 'Sem observações adicionais.'}`)}
                                 className="text-xs text-emerald-700 hover:underline px-1 py-1 font-medium"
                               >
-                                Tratativa NTI
+                                Ver Detalhes
                               </button>
                             </td>
                           </tr>
@@ -1000,7 +982,7 @@ export default function App() {
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden">
             <div className="px-6 py-4 bg-emerald-900 text-white flex justify-between items-center">
               <h3 className="font-bold text-lg">
-                {editingId ? 'Editar Registro' : 'Novo Registro'} - {activeTab === 'chamados' ? 'Chamado Interno' : 'Críticas & Chamado NTI'}
+                {editingId ? 'Editar Registro' : 'Novo Registro'} - {activeTab === 'chamados' ? 'Chamado Interno' : activeTab === 'criticas' ? 'Crítica e Erro' : 'Pendência'}
               </h3>
               <button onClick={() => setIsModalOpen(false)} className="text-emerald-200 hover:text-white">
                 <X className="w-5 h-5" />
@@ -1093,61 +1075,41 @@ export default function App() {
                 </>
               )}
 
-              {/* Form Críticas e Erros (Chamados NTI) */}
+              {/* Form Críticas e Erros (Estrutura Padrão Limpa) */}
               {activeTab === 'criticas' && (
                 <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Nº do Chamado NTI</label>
-                      <input name="numChamado" value={formData.numChamado || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm font-mono font-bold text-blue-900 bg-blue-50 border-blue-200" placeholder="Ex: 85210" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Cód. Atendimento Hospitalar</label>
-                      <input name="codAtendimento" value={formData.codAtendimento || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Ex: 1234567" />
-                    </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Cód. Atendimento Hospitalar</label>
+                    <input name="codAtendimento" value={formData.codAtendimento || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Ex: 1234567" />
                   </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">Crítica / Erro Apresentado *</label>
-                    <input required name="criticaErro" value={formData.criticaErro || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Descrição do erro ou lote travado" />
+                    <input required name="criticaErro" value={formData.criticaErro || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Descrição da crítica ou erro" />
                   </div>
 
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Status da NTI *</label>
-                      <select name="status" value={formData.status || 'Pendente'} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white font-semibold">
-                        <option value="Pendente">🟡 Pendente / Aberto</option>
-                        <option value="Em Andamento">🔵 Em Andamento</option>
-                        <option value="Aguardando TI">🟣 Aguardando TI</option>
-                        <option value="Aguardando Retorno">🟠 Aguardando Retorno do Usuário</option>
-                        <option value="Concluído">🟢 Concluído</option>
-                        <option value="Cancelado">⚪ Cancelado</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Prioridade *</label>
-                      <select name="prioridade" value={formData.prioridade || 'Média'} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white">
-                        <option value="Baixa">Baixa</option>
-                        <option value="Média">Média</option>
-                        <option value="Alta">Alta</option>
-                      </select>
-                    </div>
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">Sistema *</label>
                       <select name="sistema" value={formData.sistema || 'SoulMV'} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white">
                         <option value="SoulMV">SoulMV</option>
                         <option value="SAW">SAW</option>
                         <option value="EasyAudit">EasyAudit</option>
-                        <option value="Hardware">Hardware / Impressora</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Status *</label>
+                      <select name="status" value={formData.status || 'Pendente'} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white font-semibold">
+                        <option value="Pendente">🟡 Pendente / Aberto</option>
+                        <option value="Em Andamento">🔵 Em Andamento</option>
+                        <option value="Aguardando Retorno">🟠 Aguardando Retorno</option>
+                        <option value="Concluído">🟢 Concluído</option>
+                        <option value="Cancelado">⚪ Cancelado</option>
                       </select>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Remessa / Conta</label>
-                      <input name="remessa" value={formData.remessa || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Nº Remessa/Conta" />
-                    </div>
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">Empresa</label>
                       <input name="empresa" value={formData.empresa || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Ex: Hospital" />
@@ -1164,13 +1126,13 @@ export default function App() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Tratativa NTI / Observações</label>
-                    <textarea name="observacao" value={formData.observacao || ''} onChange={handleInputChange} rows="3" className="w-full border p-2.5 rounded-lg text-sm" placeholder="Histórico de tratativas da NTI e retornos dados..."></textarea>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Observações / Detalhes</label>
+                    <textarea name="observacao" value={formData.observacao || ''} onChange={handleInputChange} rows="3" className="w-full border p-2.5 rounded-lg text-sm" placeholder="Observações adicionais..."></textarea>
                   </div>
                 </>
               )}
 
-              {/* Form Outras Abas */}
+              {/* Form Proced. Sem Valor */}
               {activeTab === 'sem_valor' && (
                 <>
                   <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
@@ -1222,6 +1184,7 @@ export default function App() {
                 </>
               )}
 
+              {/* Form Proced. Sem TUSS */}
               {activeTab === 'sem_tuss' && (
                 <>
                   <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
