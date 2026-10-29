@@ -4,10 +4,10 @@ import { collection, addDoc, onSnapshot, updateDoc, deleteDoc, doc, query, order
 import { 
   AlertTriangle, Clock, PlusCircle, ShieldAlert, 
   FileCode, ChevronRight, X, Edit3, Trash2, MessageSquare, Paperclip,
-  Home, Send, Filter, ArrowRight, Calendar,
+  Home, Send, Filter, ArrowRight,
   Mail, Download, Image as ImageIcon, Bell, BellRing,
   BarChart3, Activity, CheckCircle, Search, History,
-  ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft
+  ArrowUpDown, ArrowUp, ArrowDown
 } from 'lucide-react';
 
 // 40 Chamados NTI higienizados para a carga inicial/biblioteca
@@ -397,7 +397,7 @@ export default function App() {
     return (
       <th 
         onClick={() => handleSort(sortKey)} 
-        className={`p-4 cursor-pointer hover:bg-slate-100 transition select-none ${className}`}
+        className={`p-4 cursor-pointer hover:bg-slate-100 transition select-none whitespace-nowrap ${className}`}
         title={`Clique para ordenar por ${label}`}
       >
         <div className="flex items-center gap-1.5">
@@ -489,7 +489,7 @@ export default function App() {
   return (
     <div className="flex h-screen bg-slate-100 text-slate-800 font-sans">
       {/* Sidebar Lateral */}
-      <aside className="w-64 bg-emerald-950 text-white flex flex-col justify-between shadow-xl">
+      <aside className="w-64 bg-emerald-950 text-white flex flex-col justify-between shadow-xl flex-shrink-0">
         <div>
           <div className="p-6 border-b border-emerald-900 flex flex-col items-start gap-2">
             <img 
@@ -592,7 +592,7 @@ export default function App() {
       </aside>
 
       {/* Conteúdo Principal */}
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 flex flex-col overflow-hidden min-w-0">
         
         {/* PÁGINA PRINCIPAL */}
         {activeTab === 'inicio' ? (
@@ -816,7 +816,7 @@ export default function App() {
         ) : (
           /* TABELAS E FILTROS */
           <>
-            <header className="bg-white border-b px-8 py-5 flex justify-between items-center shadow-sm">
+            <header className="bg-white border-b px-8 py-5 flex justify-between items-center shadow-sm flex-shrink-0">
               <div>
                 <h2 className="text-2xl font-bold text-slate-800">
                   {activeTab === 'criticas' && 'Gestão de Críticas e Erros (Chamados NTI)'}
@@ -833,7 +833,7 @@ export default function App() {
 
               <button
                 onClick={handleOpenNewModal}
-                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg shadow font-medium text-sm transition"
+                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg shadow font-medium text-sm transition flex-shrink-0"
               >
                 <PlusCircle className="w-5 h-5" /> {activeTab === 'chamados' ? 'Abrir Novo Chamado' : 'Novo Registro'}
               </button>
@@ -914,57 +914,57 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Tabela de Dados com Ordenação por Coluna */}
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <table className="w-full text-left text-sm text-slate-600">
+              {/* Tabela de Dados com Rolagem Horizontal Otimizada */}
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+                <table className="w-full text-left text-sm text-slate-600 min-w-[1350px]">
                   <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500 font-semibold">
                     <tr>
-                      <SortableHeader label="Status" sortKey="status" />
+                      <SortableHeader label="Status" sortKey="status" className="min-w-[180px]" />
                       {activeTab === 'chamados' ? (
                         <>
-                          <SortableHeader label="Código / Título" sortKey="tituloChamado" />
-                          <SortableHeader label="Solicitante / Setor" sortKey="nomeUsuario" />
-                          <SortableHeader label="Sistema / Tipo" sortKey="sistema" />
-                          <th className="p-4">Contato</th>
-                          <SortableHeader label="Prioridade" sortKey="prioridade" />
-                          <SortableHeader label="Data de Abertura" sortKey="data_abertura" />
-                          <th className="p-4 text-center">Anexo</th>
+                          <SortableHeader label="Código / Título" sortKey="tituloChamado" className="min-w-[220px]" />
+                          <SortableHeader label="Solicitante / Setor" sortKey="nomeUsuario" className="min-w-[180px]" />
+                          <SortableHeader label="Sistema / Tipo" sortKey="sistema" className="min-w-[140px]" />
+                          <th className="p-4 whitespace-nowrap min-w-[140px]">Contato</th>
+                          <SortableHeader label="Prioridade" sortKey="prioridade" className="min-w-[120px]" />
+                          <SortableHeader label="Data de Abertura" sortKey="data_abertura" className="min-w-[140px]" />
+                          <th className="p-4 text-center whitespace-nowrap min-w-[110px]">Anexo</th>
                         </>
                       ) : (
                         <>
-                          <SortableHeader label="Atendimento / Nº NTI" sortKey="numChamado" />
+                          <SortableHeader label="Atendimento / Nº NTI" sortKey="numChamado" className="min-w-[140px]" />
                           {activeTab === 'criticas' && (
                             <>
-                              <SortableHeader label="Crítica / Erro Apresentado" sortKey="criticaErro" />
-                              <SortableHeader label="Data de Abertura" sortKey="data_abertura" />
-                              <SortableHeader label="Sistema" sortKey="sistema" />
-                              <SortableHeader label="Empresa / Convênio" sortKey="empresa" />
+                              <SortableHeader label="Crítica / Erro Apresentado" sortKey="criticaErro" className="min-w-[280px]" />
+                              <SortableHeader label="Data de Abertura" sortKey="data_abertura" className="min-w-[130px]" />
+                              <SortableHeader label="Sistema" sortKey="sistema" className="min-w-[120px]" />
+                              <SortableHeader label="Empresa / Convênio" sortKey="empresa" className="min-w-[150px]" />
                             </>
                           )}
                           {activeTab === 'sem_valor' && (
                             <>
-                              <SortableHeader label="Profat / Descrição" sortKey="descricao" />
-                              <SortableHeader label="Tabela" sortKey="tabela" />
-                              <SortableHeader label="Data de Abertura" sortKey="data_abertura" />
-                              <th className="p-4">Alerta SLA (48h)</th>
-                              <SortableHeader label="Empresa / Convênio" sortKey="empresa" />
-                              <th className="p-4">Dt da Conta</th>
+                              <SortableHeader label="Profat / Descrição" sortKey="descricao" className="min-w-[280px]" />
+                              <SortableHeader label="Tabela" sortKey="tabela" className="min-w-[100px]" />
+                              <SortableHeader label="Data de Abertura" sortKey="data_abertura" className="min-w-[130px]" />
+                              <th className="p-4 whitespace-nowrap min-w-[150px]">Alerta SLA (48h)</th>
+                              <SortableHeader label="Empresa / Convênio" sortKey="empresa" className="min-w-[150px]" />
+                              <th className="p-4 whitespace-nowrap min-w-[120px]">Dt da Conta</th>
                             </>
                           )}
                           {activeTab === 'sem_tuss' && (
                             <>
-                              <SortableHeader label="Profat / Descrição" sortKey="descricao" />
-                              <SortableHeader label="TUSS / Tabela XML" sortKey="tuss" />
-                              <SortableHeader label="Data de Abertura" sortKey="data_abertura" />
-                              <th className="p-4">Alerta SLA (24h)</th>
-                              <th className="p-4 text-center">Foto Mat./Med.</th>
-                              <SortableHeader label="Empresa / Convênio" sortKey="empresa" />
+                              <SortableHeader label="Profat / Descrição" sortKey="descricao" className="min-w-[280px]" />
+                              <SortableHeader label="TUSS / Tabela XML" sortKey="tuss" className="min-w-[160px]" />
+                              <SortableHeader label="Data de Abertura" sortKey="data_abertura" className="min-w-[130px]" />
+                              <th className="p-4 whitespace-nowrap min-w-[150px]">Alerta SLA (24h)</th>
+                              <th className="p-4 text-center whitespace-nowrap min-w-[130px]">Foto Mat./Med.</th>
+                              <SortableHeader label="Empresa / Convênio" sortKey="empresa" className="min-w-[150px]" />
                             </>
                           )}
-                          <SortableHeader label="Usuário" sortKey="usuario" />
+                          <SortableHeader label="Usuário" sortKey="usuario" className="min-w-[120px]" />
                         </>
                       )}
-                      <th className="p-4 text-center">Ações</th>
+                      <th className="p-4 text-center whitespace-nowrap min-w-[170px]">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -982,7 +982,7 @@ export default function App() {
 
                         return (
                           <tr key={item.id} className={`hover:bg-slate-50 transition ${item.status === 'Concluído' ? 'bg-slate-50/50' : ''}`}>
-                            <td className="p-4">
+                            <td className="p-4 whitespace-nowrap">
                               <select
                                 value={item.status || 'Pendente'}
                                 onChange={(e) => handleStatusChange(item.id, e.target.value)}
@@ -1007,7 +1007,7 @@ export default function App() {
                             {activeTab === 'chamados' ? (
                               <>
                                 <td className="p-4">
-                                  <div className="font-mono text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded w-max mb-1 border border-emerald-200">
+                                  <div className="font-mono text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded w-max mb-1 border border-emerald-200 whitespace-nowrap">
                                     {item.codChamado}
                                   </div>
                                   <div className="font-semibold text-slate-800 text-sm">{item.tituloChamado}</div>
@@ -1016,15 +1016,15 @@ export default function App() {
                                   <div className="font-medium text-slate-800">{item.nomeUsuario}</div>
                                   <div className="text-xs text-slate-500">{item.setor}</div>
                                 </td>
-                                <td className="p-4">
+                                <td className="p-4 whitespace-nowrap">
                                   <span className="font-medium text-slate-700">{item.sistema}</span>
                                   <span className="text-xs text-slate-500 block">({item.tipoChamado})</span>
                                 </td>
-                                <td className="p-4 text-xs text-slate-600">
+                                <td className="p-4 text-xs text-slate-600 whitespace-nowrap">
                                   <div>Chat: {item.chat || '-'}</div>
                                   <div>Ramal: {item.ramal || '-'}</div>
                                 </td>
-                                <td className="p-4">
+                                <td className="p-4 whitespace-nowrap">
                                   <span className={`px-2 py-1 text-xs rounded font-bold ${
                                     item.prioridade === 'Alta' ? 'bg-red-100 text-red-700' :
                                     item.prioridade === 'Média' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700'
@@ -1032,10 +1032,10 @@ export default function App() {
                                     {item.prioridade || 'Normal'}
                                   </span>
                                 </td>
-                                <td className="p-4 text-xs font-semibold text-slate-700">
+                                <td className="p-4 text-xs font-semibold text-slate-700 whitespace-nowrap">
                                   {formatDate(dataExibicao)}
                                 </td>
-                                <td className="p-4 text-center">
+                                <td className="p-4 text-center whitespace-nowrap">
                                   {item.anexoUrl ? (
                                     <button 
                                       onClick={() => handleOpenAnexo(item)}
@@ -1051,7 +1051,7 @@ export default function App() {
                               </>
                             ) : (
                               <>
-                                <td className="p-4 font-mono text-xs font-semibold text-slate-700">
+                                <td className="p-4 font-mono text-xs font-semibold text-slate-700 whitespace-nowrap">
                                   <div>Atend: {item.codAtendimento || '-'}</div>
                                   {item.numChamado && (
                                     <div className="text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 mt-1 w-max font-bold">
@@ -1062,49 +1062,49 @@ export default function App() {
 
                                 {activeTab === 'criticas' && (
                                   <>
-                                    <td className="p-4 font-medium text-slate-800">{item.criticaErro}</td>
-                                    <td className="p-4 text-xs font-semibold text-slate-700">
+                                    <td className="p-4 font-medium text-slate-800 leading-relaxed">{item.criticaErro}</td>
+                                    <td className="p-4 text-xs font-semibold text-slate-700 whitespace-nowrap">
                                       {formatDate(dataExibicao)}
                                     </td>
-                                    <td className="p-4">{item.sistema || 'SoulMV'}</td>
-                                    <td className="p-4">{item.empresa || '-'} / {item.convenio || '-'}</td>
+                                    <td className="p-4 whitespace-nowrap">{item.sistema || 'SoulMV'}</td>
+                                    <td className="p-4 whitespace-nowrap">{item.empresa || '-'} / {item.convenio || '-'}</td>
                                   </>
                                 )}
 
                                 {activeTab === 'sem_valor' && (
                                   <>
-                                    <td className="p-4 font-medium text-slate-800">{item.profat} - {item.descricao}</td>
-                                    <td className="p-4 text-xs font-semibold text-slate-700">{item.tabela || '-'}</td>
-                                    <td className="p-4 text-xs font-semibold text-slate-700">
+                                    <td className="p-4 font-medium text-slate-800 leading-relaxed">{item.profat} - {item.descricao}</td>
+                                    <td className="p-4 text-xs font-semibold text-slate-700 whitespace-nowrap">{item.tabela || '-'}</td>
+                                    <td className="p-4 text-xs font-semibold text-slate-700 whitespace-nowrap">
                                       {formatDate(dataExibicao)}
                                     </td>
-                                    <td className="p-4">
+                                    <td className="p-4 whitespace-nowrap">
                                       {sla48 && (
-                                        <span className={`px-2.5 py-1 text-xs rounded-md font-semibold border ${sla48.color}`}>
+                                        <span className={`px-2.5 py-1 text-xs rounded-md font-semibold border inline-block whitespace-nowrap ${sla48.color}`}>
                                           {sla48.label}
                                         </span>
                                       )}
                                     </td>
-                                    <td className="p-4">{item.empresa} / {item.convenio}</td>
-                                    <td className="p-4">{item.dtConta}</td>
+                                    <td className="p-4 whitespace-nowrap">{item.empresa} / {item.convenio}</td>
+                                    <td className="p-4 whitespace-nowrap">{item.dtConta}</td>
                                   </>
                                 )}
 
                                 {activeTab === 'sem_tuss' && (
                                   <>
-                                    <td className="p-4 font-medium text-slate-800">{item.profat} - {item.descricao}</td>
-                                    <td className="p-4">{item.tuss || 'Sem TUSS'} ({item.tabelaXml || '-'})</td>
-                                    <td className="p-4 text-xs font-semibold text-slate-700">
+                                    <td className="p-4 font-medium text-slate-800 leading-relaxed">{item.profat} - {item.descricao}</td>
+                                    <td className="p-4 whitespace-nowrap">{item.tuss || 'Sem TUSS'} ({item.tabelaXml || '-'})</td>
+                                    <td className="p-4 text-xs font-semibold text-slate-700 whitespace-nowrap">
                                       {formatDate(dataExibicao)}
                                     </td>
-                                    <td className="p-4">
+                                    <td className="p-4 whitespace-nowrap">
                                       {sla24 && (
-                                        <span className={`px-2.5 py-1 text-xs rounded-md font-semibold border ${sla24.color}`}>
+                                        <span className={`px-2.5 py-1 text-xs rounded-md font-semibold border inline-block whitespace-nowrap ${sla24.color}`}>
                                           {sla24.label}
                                         </span>
                                       )}
                                     </td>
-                                    <td className="p-4 text-center">
+                                    <td className="p-4 text-center whitespace-nowrap">
                                       {item.anexoUrl ? (
                                         <button 
                                           onClick={() => handleOpenAnexo(item)}
@@ -1117,28 +1117,30 @@ export default function App() {
                                         <span className="text-xs text-slate-400">-</span>
                                       )}
                                     </td>
-                                    <td className="p-4">{item.empresa} / {item.convenio}</td>
+                                    <td className="p-4 whitespace-nowrap">{item.empresa} / {item.convenio}</td>
                                   </>
                                 )}
 
-                                <td className="p-4 text-xs text-slate-500">{item.usuario || 'Sistema'}</td>
+                                <td className="p-4 text-xs text-slate-500 whitespace-nowrap">{item.usuario || 'Sistema'}</td>
                               </>
                             )}
 
-                            <td className="p-4 flex items-center justify-center gap-2">
-                              <button 
-                                onClick={() => handleOpenEditModal(item)}
-                                className="flex items-center gap-1 text-xs text-amber-700 hover:text-amber-900 font-medium bg-amber-50 hover:bg-amber-100 px-2 py-1 rounded transition"
-                              >
-                                <Edit3 className="w-3.5 h-3.5" /> Editar
-                              </button>
-                              <button 
-                                onClick={() => handleDeleteItem(item.id)}
-                                className="flex items-center gap-1 text-xs text-red-700 hover:text-red-900 font-medium bg-red-50 hover:bg-red-100 px-2 py-1 rounded transition"
-                                title="Excluir Registro"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" /> Excluir
-                              </button>
+                            <td className="p-4 text-center whitespace-nowrap">
+                              <div className="flex items-center justify-center gap-2">
+                                <button 
+                                  onClick={() => handleOpenEditModal(item)}
+                                  className="flex items-center gap-1 text-xs text-amber-700 hover:text-amber-900 font-medium bg-amber-50 hover:bg-amber-100 px-2.5 py-1.5 rounded transition shadow-sm border border-amber-200"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" /> Editar
+                                </button>
+                                <button 
+                                  onClick={() => handleDeleteItem(item.id)}
+                                  className="flex items-center gap-1 text-xs text-red-700 hover:text-red-900 font-medium bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded transition shadow-sm border border-red-200"
+                                  title="Excluir Registro"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" /> Excluir
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -1158,7 +1160,7 @@ export default function App() {
                       <button
                         disabled={currentPage === 1}
                         onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                        className="px-3 py-1.5 border border-slate-300 rounded-lg bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 font-semibold transition"
+                        className="px-3 py-1.5 border border-slate-300 rounded-lg bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 font-semibold transition shadow-sm"
                       >
                         Anterior
                       </button>
@@ -1170,7 +1172,7 @@ export default function App() {
                       <button
                         disabled={currentPage === totalPages}
                         onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                        className="px-3 py-1.5 border border-slate-300 rounded-lg bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 font-semibold transition"
+                        className="px-3 py-1.5 border border-slate-300 rounded-lg bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 font-semibold transition shadow-sm"
                       >
                         Próxima
                       </button>
