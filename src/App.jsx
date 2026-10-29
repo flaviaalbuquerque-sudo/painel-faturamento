@@ -4,53 +4,54 @@ import { collection, addDoc, onSnapshot, updateDoc, deleteDoc, doc, query, order
 import { 
   AlertTriangle, Clock, PlusCircle, ShieldAlert, 
   FileCode, ChevronRight, X, Edit3, Trash2, MessageSquare, Paperclip,
-  Home, Send, Filter, ArrowRight,
+  Home, Send, Filter, ArrowRight, Calendar,
   Mail, Download, Image as ImageIcon, Bell, BellRing,
-  BarChart3, Activity, CheckCircle, Search, History
+  BarChart3, Activity, CheckCircle, Search, History,
+  ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft
 } from 'lucide-react';
 
 // 40 Chamados NTI higienizados para a carga inicial/biblioteca
 const CHAMADOS_NTI_INICIAIS = [
-  { codAtendimento: '', numChamado: '47862', criticaErro: 'As contas que foram colocadas em remessa somem da tela, e para encontrar a remessa precisamos procurar através de uma das contas que foram inseridas, para depois selecionar e conseguir entregar a remessa concluindo assim o processo', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '4297364', numChamado: '48162', criticaErro: 'atendimento 4297364 SADT que teve alta no dia 25/11/2025 às 11:17h, porém não consegui colocar na esteira, pois a conta não aparece', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '177287', numChamado: '48291', criticaErro: 'Ao puxar as contas sem remessa na esteira unimed Recife apareceu uma conta 177287 que não está em remessa inforando que já foi gerado xml. Conferi no SAW a guia referente ao atendimento e realmente essa conta não foi postada. Por favor verificar porque ela aparece o status marcado com xml gerado', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed Recife', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '177213', numChamado: '48316', criticaErro: 'Ocorreu um erro onde 4 contas que já estava em remessa e importada no SAW, a esteira ao puxar as contas pelo filtro sem remessa trouxe na informação e acabou atribuindo as mesmas em outra remessa. Contas: 177213, 177855, 178411, 177208.', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '48335', criticaErro: 'ao recalcular as contas está dobrando as diárias dentro da conta', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '48511', criticaErro: 'Ao puxar as contas por data, percebemos que a esteira está colocando algumas contas fora do período selecionado, o que está ocasionando o não faturamento da conta na data correta, gerando dessa forma atraso no faturamento. Por favor ajustar.', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '177654', numChamado: '50226', criticaErro: 'Opme não está aparecendo no easyaudit para as auditoras', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Tratativa: problemas operacionais (conta 177654)' },
-  { codAtendimento: '179644', numChamado: '50279', criticaErro: 'opme, divergencia na quantidade na fatura, no sistema mv.conta 179644', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '52041', criticaErro: 'Ao selecionar status sincronizar, o filtro não traz todas as contas.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '4371189', numChamado: '52356', criticaErro: 'Atendimento 4371189 conv 40, 30/12/2025 não aparece na esteira de conta, essa conta precisa passar na auditoria de enfermagem.', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Convênio 40', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '157472', numChamado: '52457', criticaErro: 'abrir a remessa 157472 conv.12 (deu erro para retirar as contas)', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Convênio 12', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '157989', numChamado: '53538', criticaErro: 'Ao tentar enviar o arquivo 157989, o sistema informa o erro de integridade.', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '55258', criticaErro: 'Erro ao gerar xml, na aba monitoração de faturamento. Usuário: Dafne.luiza', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'Dafne Luiza', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '55482', criticaErro: 'Ao tentar gerar remessa no Easy Audit, está aparecendo um erro, e não aparece a remessa no sistema, só que no Mv a remessa foi gerada.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '55723', criticaErro: 'erro no status de sincronização easy', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '62177', criticaErro: 'Divergências de valores no OPME, auditoria de enfermagem altera os materiais e não assume no Mv.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '64133', criticaErro: 'Erro ao gerar o relatório para imprimir a conta e ao fechar a conta.', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '66550', criticaErro: 'Erro ao gerar relatório 10470 no unireport.', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '70475', criticaErro: 'duplicidade na esteira de conta no Easy Audit.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '48050', criticaErro: 'Remessas duplicando no Easy Audit', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '177661', numChamado: '48784', criticaErro: 'Conta 177661 não assumiu a auditoria no mv', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '41194', criticaErro: 'Quebra de parciais automático no sistema', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Configurações do sistema' },
-  { codAtendimento: '', numChamado: '43789', criticaErro: 'Duplicidade de códigos de serviço no CEMUC', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'CEMUC', usuario: 'NTI Import', observacao: 'Configurações do sistema' },
-  { codAtendimento: '', numChamado: '43054', criticaErro: 'Solicitação de Melhorias e Correções para a Ferramenta Easy Audit', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitações de melhoria' },
-  { codAtendimento: '', numChamado: '44031', criticaErro: 'Restrição que impeça a utilização da mesma guia em dois atendimentos ambulatoriais distintos', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitações de melhoria' },
-  { codAtendimento: '', numChamado: '44378', criticaErro: 'Importação de Códigos Laboratoriais (Unilab) para Conta Hospitalar', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unilab', usuario: 'NTI Import', observacao: 'Configurações do sistema' },
-  { codAtendimento: '', numChamado: '61632', criticaErro: 'Limitação de cadastro de porte no SOUL MV', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
-  { codAtendimento: '', numChamado: '63948', criticaErro: 'realização de higienização da base de dados no sistema MV Hospitalar no cadastro do beneficiário', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
-  { codAtendimento: '', numChamado: '63958', criticaErro: 'Atualização da tabela CASSI', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'CASSI', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
-  { codAtendimento: '', numChamado: '69617', criticaErro: 'Solicitação de relatório para Jean', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
-  { codAtendimento: '', numChamado: '69690', criticaErro: 'Solicitação de lógica para o relatório 12590', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Esclarecimento da lógica do relatório 12590' },
-  { codAtendimento: '', numChamado: '70291', criticaErro: 'Insert tabelas 72 sulamerica', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'SulAmérica', usuario: 'NTI Import', observacao: 'Insert de atualização dos valores da TABELA 72 do sulamerica' },
-  { codAtendimento: '', numChamado: '70421', criticaErro: 'Solicitação de ajuste no relatório - 10470', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Relatório 10470 - unireport não esta trazendo alguns atendimentos' },
-  { codAtendimento: '', numChamado: '70903', criticaErro: 'Ajuste de todos os setores e origem para todos os usuários do faturamento', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Ajuste de setores/origens para acesso completo a contas' },
-  { codAtendimento: '', numChamado: '71048', criticaErro: 'Extração de relatório via banco para identificar inconsistências cadastrais nas tabelas de faturamento (PROFAT sem TUSS)', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Mapeamento de PROFATs sem vinculo TUSS' },
-  { codAtendimento: '', numChamado: '71086', criticaErro: 'Extração de dados via banco para mapeamento e parametrização de valores zerados ou ausentes', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Mapeamento de itens PROFAT sem preço/vigência (Link ClickUp)' },
-  { codAtendimento: '', numChamado: '71420', criticaErro: 'Dados como prescrição, evolução dos pacientes não aparece no PEP', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Inconsistência de exibição no PEP' },
-  { codAtendimento: '', numChamado: '74153', criticaErro: 'Configuração do convênio 50 na empresa 5 mv - saw', sistema: 'SAW', status: 'Em Andamento', empresa: 'Empresa 5', convenio: 'Convênio 50', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
-  { codAtendimento: '', numChamado: '82.992', criticaErro: 'Acréscimo de aba de observação de faturamento no Easy Audit', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitado via ClickUp' },
-  { codAtendimento: '', numChamado: '86.861', criticaErro: 'Solicitação de Raspberry / Estação de Trabalho', sistema: 'Hardware', status: 'Aguardando TI', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitado via ClickUp' }
+  { codAtendimento: '', numChamado: '47862', data_abertura: '2025-11-25', criticaErro: 'As contas que foram colocadas em remessa somem da tela, e para encontrar a remessa precisamos procurar através de uma das contas que foram inseridas, para depois selecionar e conseguir entregar a remessa concluindo assim o processo', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '4297364', numChamado: '48162', data_abertura: '2025-11-27', criticaErro: 'atendimento 4297364 SADT que teve alta no dia 25/11/2025 às 11:17h, porém não consegui colocar na esteira, pois a conta não aparece', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '177287', numChamado: '48291', data_abertura: '2025-11-28', criticaErro: 'Ao puxar as contas sem remessa na esteira unimed Recife apareceu uma conta 177287 que não está em remessa inforando que já foi gerado xml. Conferi no SAW a guia referente ao atendimento e realmente essa conta não foi postada. Por favor verificar porque ela aparece o status marcado com xml gerado', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed Recife', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '177213', numChamado: '48316', data_abertura: '2025-11-28', criticaErro: 'Ocorreu um erro onde 4 contas que já estava em remessa e importada no SAW, a esteira ao puxar as contas pelo filtro sem remessa trouxe na informação e acabou atribuindo as mesmas em outra remessa. Contas: 177213, 177855, 178411, 177208.', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '48335', data_abertura: '2025-11-28', criticaErro: 'ao recalcular as contas está dobrando as diárias dentro da conta', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '48511', data_abertura: '2025-12-01', criticaErro: 'Ao puxar as contas por data, percebemos que a esteira está colocando algumas contas fora do período selecionado, o que está ocasionando o não faturamento da conta na data correta, gerando dessa forma atraso no faturamento. Por favor ajustar.', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '177654', numChamado: '50226', data_abertura: '2025-12-10', criticaErro: 'Opme não está aparecendo no easyaudit para as auditoras', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Tratativa: problemas operacionais (conta 177654)' },
+  { codAtendimento: '179644', numChamado: '50279', data_abertura: '2025-12-10', criticaErro: 'opme, divergencia na quantidade na fatura, no sistema mv.conta 179644', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '52041', data_abertura: '2025-12-31', criticaErro: 'Ao selecionar status sincronizar, o filtro não traz todas as contas.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '4371189', numChamado: '52356', data_abertura: '2026-01-05', criticaErro: 'Atendimento 4371189 conv 40, 30/12/2025 não aparece na esteira de conta, essa conta precisa passar na auditoria de enfermagem.', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Convênio 40', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '157472', numChamado: '52457', data_abertura: '2026-01-05', criticaErro: 'abrir a remessa 157472 conv.12 (deu erro para retirar as contas)', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Convênio 12', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '157989', numChamado: '53538', data_abertura: '2026-01-12', criticaErro: 'Ao tentar enviar o arquivo 157989, o sistema informa o erro de integridade.', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '55258', data_abertura: '2026-01-26', criticaErro: 'Erro ao gerar xml, na aba monitoração de faturamento. Usuário: Dafne.luiza', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'Dafne Luiza', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '55482', data_abertura: '2026-01-28', criticaErro: 'Ao tentar gerar remessa no Easy Audit, está aparecendo um erro, e não aparece a remessa no sistema, só que no Mv a remessa foi gerada.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '55723', data_abertura: '2026-01-30', criticaErro: 'erro no status de sincronização easy', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '62177', data_abertura: '2026-03-16', criticaErro: 'Divergências de valores no OPME, auditoria de enfermagem altera os materiais e não assume no Mv.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '64133', data_abertura: '2026-04-01', criticaErro: 'Erro ao gerar o relatório para imprimir a conta e ao fechar a conta.', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '66550', data_abertura: '2026-04-15', criticaErro: 'Erro ao gerar relatório 10470 no unireport.', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '70475', data_abertura: '2026-05-15', criticaErro: 'duplicidade na esteira de conta no Easy Audit.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '48050', data_abertura: '2025-11-20', criticaErro: 'Remessas duplicando no Easy Audit', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '177661', numChamado: '48784', data_abertura: '2025-12-02', criticaErro: 'Conta 177661 não assumiu a auditoria no mv', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '41194', data_abertura: '2025-10-03', criticaErro: 'Quebra de parciais automático no sistema', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Configurações do sistema' },
+  { codAtendimento: '', numChamado: '43789', data_abertura: '2025-10-21', criticaErro: 'Duplicidade de códigos de serviço no CEMUC', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'CEMUC', usuario: 'NTI Import', observacao: 'Configurações do sistema' },
+  { codAtendimento: '', numChamado: '43054', data_abertura: '2025-10-21', criticaErro: 'Solicitação de Melhorias e Correções para a Ferramenta Easy Audit', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitações de melhoria' },
+  { codAtendimento: '', numChamado: '44031', data_abertura: '2025-10-23', criticaErro: 'Restrição que impeça a utilização da mesma guia em dois atendimentos ambulatoriais distintos', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitações de melhoria' },
+  { codAtendimento: '', numChamado: '44378', data_abertura: '2025-10-28', criticaErro: 'Importação de Códigos Laboratoriais (Unilab) para Conta Hospitalar', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unilab', usuario: 'NTI Import', observacao: 'Configurações do sistema' },
+  { codAtendimento: '', numChamado: '61632', data_abertura: '2026-03-01', criticaErro: 'Limitação de cadastro de porte no SOUL MV', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
+  { codAtendimento: '', numChamado: '63948', data_abertura: '2026-03-30', criticaErro: 'realização de higienização da base de dados no sistema MV Hospitalar no cadastro do beneficiário', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
+  { codAtendimento: '', numChamado: '63958', data_abertura: '2026-03-30', criticaErro: 'Atualização da tabela CASSI', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'CASSI', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
+  { codAtendimento: '', numChamado: '69617', data_abertura: '2026-05-08', criticaErro: 'Solicitação de relatório para Jean', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
+  { codAtendimento: '', numChamado: '69690', data_abertura: '2026-05-08', criticaErro: 'Solicitação de lógica para o relatório 12590', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Esclarecimento da lógica do relatório 12590' },
+  { codAtendimento: '', numChamado: '70291', data_abertura: '2026-05-13', criticaErro: 'Insert tabelas 72 sulamerica', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'SulAmérica', usuario: 'NTI Import', observacao: 'Insert de atualização dos valores da TABELA 72 do sulamerica' },
+  { codAtendimento: '', numChamado: '70421', data_abertura: '2026-05-14', criticaErro: 'Solicitação de ajuste no relatório - 10470', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Relatório 10470 - unireport não esta trazendo alguns atendimentos' },
+  { codAtendimento: '', numChamado: '70903', data_abertura: '2026-05-20', criticaErro: 'Ajuste de todos os setores e origem para todos os usuários do faturamento', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Ajuste de setores/origens para acesso completo a contas' },
+  { codAtendimento: '', numChamado: '71048', data_abertura: '2026-05-21', criticaErro: 'Extração de relatório via banco para identificar inconsistências cadastrais nas tabelas de faturamento (PROFAT sem TUSS)', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Mapeamento de PROFATs sem vinculo TUSS' },
+  { codAtendimento: '', numChamado: '71086', data_abertura: '2026-05-21', criticaErro: 'Extração de dados via banco para mapeamento e parametrização de valores zerados ou ausentes', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Mapeamento de itens PROFAT sem preço/vigência' },
+  { codAtendimento: '', numChamado: '71420', data_abertura: '2026-05-25', criticaErro: 'Dados como prescrição, evolução dos pacientes não aparece no PEP', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Inconsistência de exibição no PEP' },
+  { codAtendimento: '', numChamado: '74153', data_abertura: '2026-06-15', criticaErro: 'Configuração do convênio 50 na empresa 5 mv - saw', sistema: 'SAW', status: 'Em Andamento', empresa: 'Empresa 5', convenio: 'Convênio 50', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
+  { codAtendimento: '', numChamado: '82.992', data_abertura: '2026-07-01', criticaErro: 'Acréscimo de aba de observação de faturamento no Easy Audit', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitado via ClickUp' },
+  { codAtendimento: '', numChamado: '86.861', data_abertura: '2026-07-10', criticaErro: 'Solicitação de Raspberry / Estação de Trabalho', sistema: 'Hardware', status: 'Aguardando TI', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitado via ClickUp' }
 ];
 
 export default function App() {
@@ -68,6 +69,11 @@ export default function App() {
 
   // Controle de Histórico Dinâmico (Esconde concluídos/cancelados por padrão)
   const [showHistory, setShowHistory] = useState(false);
+
+  // Paginação e Ordenação
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  const [sortConfig, setSortConfig] = useState({ key: 'data_abertura', direction: 'desc' });
 
   // Estatísticas Globais do Dashboard
   const [dashStats, setDashStats] = useState({
@@ -93,6 +99,11 @@ export default function App() {
   const [feedback, setFeedback] = useState({ nome: '', email: '', tipo: 'Sugestão de Melhoria', mensagem: '' });
   const [feedbackEnviado, setFeedbackEnviado] = useState(false);
 
+  // Reseta a página para 1 ao mudar de aba ou alterar filtros
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, filterStatus, filterProfat, filterSistema, filterChamado, filterDateStart, filterDateEnd, showHistory]);
+
   // Listener para o Dashboard Global e Notificações em Tempo Real
   useEffect(() => {
     const collections = ['criticas', 'sem_valor', 'sem_tuss', 'chamados'];
@@ -101,7 +112,6 @@ export default function App() {
       return onSnapshot(q, (snapshot) => {
         let docs = snapshot.docs.map(doc => doc.data());
         
-        // Se a coleção de críticas estiver vazia no Firestore, utiliza a base de chamados importados
         if (colName === 'criticas' && docs.length === 0) {
           docs = CHAMADOS_NTI_INICIAIS;
         }
@@ -159,12 +169,11 @@ export default function App() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       
-      // Se for a aba de críticas e ainda não houver dados no Firestore, exibe a base de 40 chamados importados
       if (activeTab === 'criticas' && data.length === 0) {
         const importadosFormatados = CHAMADOS_NTI_INICIAIS.map((c, idx) => ({
           id: `nti-${idx}`,
           ...c,
-          createdAt: new Date().toISOString()
+          createdAt: c.data_abertura ? `${c.data_abertura}T00:00:00.000Z` : new Date().toISOString()
         }));
         setItems(importadosFormatados);
       } else {
@@ -176,7 +185,7 @@ export default function App() {
         const importadosFormatados = CHAMADOS_NTI_INICIAIS.map((c, idx) => ({
           id: `nti-${idx}`,
           ...c,
-          createdAt: new Date().toISOString()
+          createdAt: c.data_abertura ? `${c.data_abertura}T00:00:00.000Z` : new Date().toISOString()
         }));
         setItems(importadosFormatados);
       }
@@ -265,11 +274,12 @@ export default function App() {
   const handleOpenNewModal = () => {
     setEditingId(null);
     setFilePreview(null);
+    const dataHojeIso = new Date().toISOString().substring(0, 10);
     if (activeTab === 'chamados') {
       const novoCodigoChamado = `CH-${Math.floor(100000 + Math.random() * 900000)}`;
-      setFormData({ codChamado: novoCodigoChamado, prioridade: 'Média', sistema: 'SoulMV', tipoChamado: 'Falha', status: 'Pendente' });
+      setFormData({ codChamado: novoCodigoChamado, prioridade: 'Média', sistema: 'SoulMV', tipoChamado: 'Falha', status: 'Pendente', data_abertura: dataHojeIso });
     } else {
-      setFormData({ status: 'Pendente', sistema: 'SoulMV' });
+      setFormData({ status: 'Pendente', sistema: 'SoulMV', data_abertura: dataHojeIso });
     }
     setIsModalOpen(true);
   };
@@ -299,6 +309,7 @@ export default function App() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const dataCriacao = formData.data_abertura ? `${formData.data_abertura}T00:00:00.000Z` : new Date().toISOString();
       if (editingId) {
         if (String(editingId).startsWith('nti-')) {
           setItems(prev => prev.map(item => item.id === editingId ? { ...formData, id: editingId } : item));
@@ -311,7 +322,8 @@ export default function App() {
         await addDoc(collection(db, activeTab), {
           ...formData,
           status: formData.status || 'Pendente',
-          createdAt: new Date().toISOString()
+          data_abertura: formData.data_abertura || new Date().toISOString().substring(0, 10),
+          createdAt: dataCriacao
         });
       }
       setIsModalOpen(false);
@@ -358,63 +370,106 @@ export default function App() {
     return { label: 'Dentro do SLA', color: 'bg-emerald-100 text-emerald-800 border-emerald-300' };
   };
 
-  const statusPriority = { 
-    'Pendente': 1, 
-    'Aberto': 1,
-    'Em Andamento': 2, 
-    'Em andamento': 2,
-    'Aguardando TI': 3,
-    'Aguardando Retorno': 4,
-    'Concluído': 5,
-    'Cancelado': 6
+  // Formatação de data visual BR (DD/MM/YYYY)
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '-';
+    try {
+      const parts = dateStr.substring(0, 10).split('-');
+      if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      return new Date(dateStr).toLocaleDateString('pt-BR');
+    } catch {
+      return dateStr;
+    }
   };
 
-  // Filtro Dinâmico com suporte à Biblioteca de Histórico
-  const filteredAndSortedItems = items
-    .filter((item) => {
-      const currentStatus = item.status || 'Pendente';
-      const isSearching = filterProfat.trim() !== '' || filterChamado.trim() !== '' || filterDateStart !== '' || filterDateEnd !== '';
+  // Lógica de Alternância de Ordenação por Coluna
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
 
-      // Oculta Concluídos/Cancelados a menos que o Histórico esteja ativo ou haja uma busca específica
-      if (!showHistory && !isSearching && filterStatus === 'Todos') {
-        if (currentStatus === 'Concluído' || currentStatus === 'Cancelado') {
-          return false;
-        }
+  // Componente de Cabeçalho com Indicador de Ordenação
+  const SortableHeader = ({ label, sortKey, className = "" }) => {
+    const isSorted = sortConfig.key === sortKey;
+    return (
+      <th 
+        onClick={() => handleSort(sortKey)} 
+        className={`p-4 cursor-pointer hover:bg-slate-100 transition select-none ${className}`}
+        title={`Clique para ordenar por ${label}`}
+      >
+        <div className="flex items-center gap-1.5">
+          <span>{label}</span>
+          {isSorted ? (
+            sortConfig.direction === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-emerald-700 font-bold" /> : <ArrowDown className="w-3.5 h-3.5 text-emerald-700 font-bold" />
+          ) : (
+            <ArrowUpDown className="w-3 h-3 text-slate-300 hover:text-slate-500" />
+          )}
+        </div>
+      </th>
+    );
+  };
+
+  // 1. Filtragem Inicial dos Registros
+  const filteredItems = items.filter((item) => {
+    const currentStatus = item.status || 'Pendente';
+    const isSearching = filterProfat.trim() !== '' || filterChamado.trim() !== '' || filterDateStart !== '' || filterDateEnd !== '';
+
+    if (!showHistory && !isSearching && filterStatus === 'Todos') {
+      if (currentStatus === 'Concluído' || currentStatus === 'Cancelado') {
+        return false;
       }
+    }
 
-      if (filterStatus !== 'Todos' && currentStatus !== filterStatus) return false;
+    if (filterStatus !== 'Todos' && currentStatus !== filterStatus) return false;
 
-      if (filterProfat.trim() !== '') {
-        const queryStr = filterProfat.toLowerCase();
-        const profatMatch = String(item.profat || '').toLowerCase().includes(queryStr) ||
-                            String(item.criticaErro || '').toLowerCase().includes(queryStr) ||
-                            String(item.numChamado || '').toLowerCase().includes(queryStr) ||
-                            String(item.codAtendimento || '').toLowerCase().includes(queryStr);
-        if (!profatMatch) return false;
-      }
+    if (filterProfat.trim() !== '') {
+      const queryStr = filterProfat.toLowerCase();
+      const profatMatch = String(item.profat || '').toLowerCase().includes(queryStr) ||
+                          String(item.criticaErro || '').toLowerCase().includes(queryStr) ||
+                          String(item.numChamado || '').toLowerCase().includes(queryStr) ||
+                          String(item.codAtendimento || '').toLowerCase().includes(queryStr);
+      if (!profatMatch) return false;
+    }
 
-      if (filterChamado.trim() !== '') {
-        const chamadoMatch = String(item.codChamado || '').toLowerCase().includes(filterChamado.toLowerCase()) ||
-                             String(item.tituloChamado || '').toLowerCase().includes(filterChamado.toLowerCase());
-        if (!chamadoMatch) return false;
-      }
+    if (filterChamado.trim() !== '') {
+      const chamadoMatch = String(item.codChamado || '').toLowerCase().includes(filterChamado.toLowerCase()) ||
+                           String(item.tituloChamado || '').toLowerCase().includes(filterChamado.toLowerCase());
+      if (!chamadoMatch) return false;
+    }
 
-      if (filterSistema !== 'Todos' && item.sistema !== filterSistema) return false;
+    if (filterSistema !== 'Todos' && item.sistema !== filterSistema) return false;
 
-      if (item.createdAt) {
-        const itemDate = item.createdAt.substring(0, 10);
-        if (filterDateStart && itemDate < filterDateStart) return false;
-        if (filterDateEnd && itemDate > filterDateEnd) return false;
-      }
+    const itemDate = (item.data_abertura || item.createdAt || '').substring(0, 10);
+    if (filterDateStart && itemDate < filterDateStart) return false;
+    if (filterDateEnd && itemDate > filterDateEnd) return false;
 
-      return true;
-    })
-    .sort((a, b) => {
-      const priorityA = statusPriority[a.status || 'Pendente'] || 99;
-      const priorityB = statusPriority[b.status || 'Pendente'] || 99;
-      if (priorityA !== priorityB) return priorityA - priorityB;
-      return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
-    });
+    return true;
+  });
+
+  // 2. Ordenação Dinâmica por Coluna
+  const sortedItems = [...filteredItems].sort((a, b) => {
+    let aVal = a[sortConfig.key] || '';
+    let bVal = b[sortConfig.key] || '';
+
+    if (sortConfig.key === 'data_abertura') {
+      aVal = a.data_abertura || a.createdAt || '';
+      bVal = b.data_abertura || b.createdAt || '';
+    }
+
+    if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+    if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+
+    if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  // 3. Paginação (Limites de 10 por página)
+  const totalPages = Math.ceil(sortedItems.length / itemsPerPage) || 1;
+  const paginatedItems = sortedItems.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const clearFilters = () => {
     setFilterStatus('Todos');
@@ -424,6 +479,7 @@ export default function App() {
     setFilterDateStart('');
     setFilterDateEnd('');
     setShowHistory(false);
+    setSortConfig({ key: 'data_abertura', direction: 'desc' });
   };
 
   const totalPendenciasGeral = dashStats.criticas.pendente + dashStats.sem_valor.pendente + dashStats.sem_tuss.pendente + dashStats.chamados.pendente;
@@ -858,66 +914,71 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Tabela de Dados */}
+              {/* Tabela de Dados com Ordenação por Coluna */}
               <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 <table className="w-full text-left text-sm text-slate-600">
                   <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500 font-semibold">
                     <tr>
-                      <th className="p-4">Status</th>
+                      <SortableHeader label="Status" sortKey="status" />
                       {activeTab === 'chamados' ? (
                         <>
-                          <th className="p-4">Código / Título</th>
-                          <th className="p-4">Solicitante / Setor</th>
-                          <th className="p-4">Sistema / Tipo</th>
+                          <SortableHeader label="Código / Título" sortKey="tituloChamado" />
+                          <SortableHeader label="Solicitante / Setor" sortKey="nomeUsuario" />
+                          <SortableHeader label="Sistema / Tipo" sortKey="sistema" />
                           <th className="p-4">Contato</th>
-                          <th className="p-4">Prioridade</th>
+                          <SortableHeader label="Prioridade" sortKey="prioridade" />
+                          <SortableHeader label="Data de Abertura" sortKey="data_abertura" />
                           <th className="p-4 text-center">Anexo</th>
                         </>
                       ) : (
                         <>
-                          <th className="p-4">Atendimento / Nº NTI</th>
+                          <SortableHeader label="Atendimento / Nº NTI" sortKey="numChamado" />
                           {activeTab === 'criticas' && (
                             <>
-                              <th className="p-4">Crítica / Erro Apresentado</th>
-                              <th className="p-4">Sistema</th>
-                              <th className="p-4">Empresa / Convênio</th>
+                              <SortableHeader label="Crítica / Erro Apresentado" sortKey="criticaErro" />
+                              <SortableHeader label="Data de Abertura" sortKey="data_abertura" />
+                              <SortableHeader label="Sistema" sortKey="sistema" />
+                              <SortableHeader label="Empresa / Convênio" sortKey="empresa" />
                             </>
                           )}
                           {activeTab === 'sem_valor' && (
                             <>
-                              <th className="p-4">Profat / Descrição</th>
-                              <th className="p-4">Tabela</th>
+                              <SortableHeader label="Profat / Descrição" sortKey="descricao" />
+                              <SortableHeader label="Tabela" sortKey="tabela" />
+                              <SortableHeader label="Data de Abertura" sortKey="data_abertura" />
                               <th className="p-4">Alerta SLA (48h)</th>
-                              <th className="p-4">Empresa / Convênio</th>
+                              <SortableHeader label="Empresa / Convênio" sortKey="empresa" />
                               <th className="p-4">Dt da Conta</th>
                             </>
                           )}
                           {activeTab === 'sem_tuss' && (
                             <>
-                              <th className="p-4">Profat / Descrição</th>
-                              <th className="p-4">TUSS / Tabela XML</th>
+                              <SortableHeader label="Profat / Descrição" sortKey="descricao" />
+                              <SortableHeader label="TUSS / Tabela XML" sortKey="tuss" />
+                              <SortableHeader label="Data de Abertura" sortKey="data_abertura" />
                               <th className="p-4">Alerta SLA (24h)</th>
                               <th className="p-4 text-center">Foto Mat./Med.</th>
-                              <th className="p-4">Empresa / Convênio</th>
+                              <SortableHeader label="Empresa / Convênio" sortKey="empresa" />
                             </>
                           )}
-                          <th className="p-4">Usuário</th>
+                          <SortableHeader label="Usuário" sortKey="usuario" />
                         </>
                       )}
                       <th className="p-4 text-center">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {filteredAndSortedItems.length === 0 ? (
+                    {paginatedItems.length === 0 ? (
                       <tr>
-                        <td colSpan="10" className="p-8 text-center text-slate-400">
+                        <td colSpan="11" className="p-8 text-center text-slate-400">
                           Nenhum registro ativo encontrado. {showHistory ? '' : 'Ative "Exibir Concluídos" para pesquisar no histórico.'}
                         </td>
                       </tr>
                     ) : (
-                      filteredAndSortedItems.map((item) => {
+                      paginatedItems.map((item) => {
                         const sla48 = activeTab === 'sem_valor' ? getSLAStatus(item.dtSolicitacao, 48) : null;
                         const sla24 = activeTab === 'sem_tuss' ? getSLAStatus(item.dtSolicitacao, 24) : null;
+                        const dataExibicao = item.data_abertura || item.dtSolicitacao || item.createdAt;
 
                         return (
                           <tr key={item.id} className={`hover:bg-slate-50 transition ${item.status === 'Concluído' ? 'bg-slate-50/50' : ''}`}>
@@ -971,6 +1032,9 @@ export default function App() {
                                     {item.prioridade || 'Normal'}
                                   </span>
                                 </td>
+                                <td className="p-4 text-xs font-semibold text-slate-700">
+                                  {formatDate(dataExibicao)}
+                                </td>
                                 <td className="p-4 text-center">
                                   {item.anexoUrl ? (
                                     <button 
@@ -999,6 +1063,9 @@ export default function App() {
                                 {activeTab === 'criticas' && (
                                   <>
                                     <td className="p-4 font-medium text-slate-800">{item.criticaErro}</td>
+                                    <td className="p-4 text-xs font-semibold text-slate-700">
+                                      {formatDate(dataExibicao)}
+                                    </td>
                                     <td className="p-4">{item.sistema || 'SoulMV'}</td>
                                     <td className="p-4">{item.empresa || '-'} / {item.convenio || '-'}</td>
                                   </>
@@ -1008,6 +1075,9 @@ export default function App() {
                                   <>
                                     <td className="p-4 font-medium text-slate-800">{item.profat} - {item.descricao}</td>
                                     <td className="p-4 text-xs font-semibold text-slate-700">{item.tabela || '-'}</td>
+                                    <td className="p-4 text-xs font-semibold text-slate-700">
+                                      {formatDate(dataExibicao)}
+                                    </td>
                                     <td className="p-4">
                                       {sla48 && (
                                         <span className={`px-2.5 py-1 text-xs rounded-md font-semibold border ${sla48.color}`}>
@@ -1024,6 +1094,9 @@ export default function App() {
                                   <>
                                     <td className="p-4 font-medium text-slate-800">{item.profat} - {item.descricao}</td>
                                     <td className="p-4">{item.tuss || 'Sem TUSS'} ({item.tabelaXml || '-'})</td>
+                                    <td className="p-4 text-xs font-semibold text-slate-700">
+                                      {formatDate(dataExibicao)}
+                                    </td>
                                     <td className="p-4">
                                       {sla24 && (
                                         <span className={`px-2.5 py-1 text-xs rounded-md font-semibold border ${sla24.color}`}>
@@ -1073,6 +1146,37 @@ export default function App() {
                     )}
                   </tbody>
                 </table>
+
+                {/* Barra de Paginação (Limite de 10 linhas) */}
+                {sortedItems.length > 0 && (
+                  <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+                    <div>
+                      Mostrando <span className="font-bold text-slate-800">{((currentPage - 1) * itemsPerPage) + 1}</span> a <span className="font-bold text-slate-800">{Math.min(currentPage * itemsPerPage, sortedItems.length)}</span> de <span className="font-bold text-slate-800">{sortedItems.length}</span> registros
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        disabled={currentPage === 1}
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        className="px-3 py-1.5 border border-slate-300 rounded-lg bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 font-semibold transition"
+                      >
+                        Anterior
+                      </button>
+
+                      <div className="px-2 font-medium">
+                        Página <span className="font-bold text-emerald-800">{currentPage}</span> de <span className="font-bold text-slate-800">{totalPages}</span>
+                      </div>
+
+                      <button
+                        disabled={currentPage === totalPages}
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        className="px-3 py-1.5 border border-slate-300 rounded-lg bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 font-semibold transition"
+                      >
+                        Próxima
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </>
@@ -1199,6 +1303,11 @@ export default function App() {
                     </div>
                   </div>
 
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Data de Abertura *</label>
+                    <input type="date" required name="data_abertura" value={formData.data_abertura || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white" />
+                  </div>
+
                   <div className="border border-dashed border-emerald-300 p-4 rounded-xl bg-emerald-50/50">
                     <label className="block text-xs font-semibold text-slate-700 mb-1">Anexar Imagem (PNG/JPEG) ou Documento (PDF) (Max 700KB)</label>
                     <input type="file" accept="image/png, image/jpeg, application/pdf" onChange={handleFileChange} className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200 cursor-pointer" />
@@ -1230,7 +1339,7 @@ export default function App() {
                     <input required name="criticaErro" value={formData.criticaErro || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Descrição do erro ou lote travado" />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">Sistema *</label>
                       <select name="sistema" value={formData.sistema || 'SoulMV'} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white">
@@ -1250,6 +1359,10 @@ export default function App() {
                         <option value="Concluído">🟢 Concluído</option>
                         <option value="Cancelado">⚪ Cancelado</option>
                       </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Data de Abertura *</label>
+                      <input type="date" required name="data_abertura" value={formData.data_abertura || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white" />
                     </div>
                   </div>
 
