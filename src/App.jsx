@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { db } from './firebase';
 import { collection, addDoc, onSnapshot, updateDoc, doc, query, orderBy } from 'firebase/firestore';
 import { 
   AlertTriangle, Clock, PlusCircle, Search, ShieldAlert, 
   FileCode, ChevronRight, X, Edit3, MessageSquare, Paperclip,
   Home, Send, Filter, HelpCircle, CheckCircle2, ArrowRight,
-  Mail, Eye, Download, FileText, Image as ImageIcon
+  Mail, Download, Image as ImageIcon, Bell, BellRing,
+  BarChart3, Activity, AlertCircle, CheckCircle
 } from 'lucide-react';
 
 export default function App() {
@@ -17,6 +18,18 @@ export default function App() {
   // Modal para Visualizar Anexo
   const [viewAnexo, setViewAnexo] = useState(null);
 
+  // Sistema de Notificação
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const previousTotalRef = useRef({});
+
+  // Estatísticas Globais do Dashboard
+  const [dashStats, setDashStats] = useState({
+    criticas: { total: 0, pendente: 0, andamento: 0, concluido: 0 },
+    sem_valor: { total: 0, pendente: 0, andamento: 0, concluido: 0, slaEstourado: 0 },
+    sem_tuss: { total: 0, pendente: 0, andamento: 0, concluido: 0, slaEstourado: 0 },
+    chamados: { total: 0, pendente: 0, andamento: 0, concluido: 0, altaPrioridade: 0 }
+  });
+
   // Estados dos Filtros Avançados
   const [filterStatus, setFilterStatus] = useState('Todos');
   const [filterProfat, setFilterProfat] = useState('');
@@ -25,14 +38,67 @@ export default function App() {
   const [filterDateStart, setFilterDateStart] = useState('');
   const [filterDateEnd, setFilterDateEnd] = useState('');
 
-  // Formulário Estado Inicial
+  // Form State
   const [formData, setFormData] = useState({});
   const [filePreview, setFilePreview] = useState(null);
 
-  // Estado do Formulário de Feedback
+  // Form Feedback State
   const [feedback, setFeedback] = useState({ nome: '', email: '', tipo: 'Sugestão de Melhoria', mensagem: '' });
   const [feedbackEnviado, setFeedbackEnviado] = useState(false);
 
+  // Listener para o Dashboard Global e Notificações em Tempo Real
+  useEffect(() => {
+    const collections = ['criticas', 'sem_valor', 'sem_tuss', 'chamados'];
+    const unsubscribes = collections.map(colName => {
+      const q = query(collection(db, colName));
+      return onSnapshot(q, (snapshot) => {
+        const docs = snapshot.docs.map(doc => doc.data());
+        const total = docs.length;
+        const pendente = docs.filter(d => (d.status || 'Pendente') === 'Pendente').length;
+        const andamento = docs.filter(d => d.status === 'Em Andamento').length;
+        const concluido = docs.filter(d => d.status === 'Concluído').length;
+
+        let slaEstourado = 0;
+        if (colName === 'sem_valor') {
+          slaEstourado = docs.filter(d => {
+            if (d.status === 'Concluído' || !d.dtSolicitacao) return false;
+            return ((new Date() - new Date(d.dtSolicitacao)) / 3600000) > 48;
+          }).length;
+        }
+        if (colName === 'sem_tuss') {
+          slaEstourado = docs.filter(d => {
+            if (d.status === 'Concluído' || !d.dtSolicitacao) return false;
+            return ((new Date() - new Date(d.dtSolicitacao)) / 3600000) > 24;
+          }).length;
+        }
+
+        let altaPrioridade = 0;
+        if (colName === 'chamados') {
+          altaPrioridade = docs.filter(d => d.prioridade === 'Alta' && d.status !== 'Concluído').length;
+        }
+
+        // Checar se entrou nova demanda para disparar notificação
+        if (previousTotalRef.current[colName] !== undefined && total > previousTotalRef.current[colName]) {
+          if (Notification.permission === 'granted') {
+            new Notification('🔔 Nova Demanda Registrada!', {
+              body: `Foi inserido um novo registro no módulo: ${colName.toUpperCase()}`,
+              icon: '/logo-unimed.png'
+            });
+          }
+        }
+        previousTotalRef.current[colName] = total;
+
+        setDashStats(prev => ({
+          ...prev,
+          [colName]: { total, pendente, andamento, concluido, slaEstourado, altaPrioridade }
+        }));
+      });
+    });
+
+    return () => unsubscribes.forEach(unsub => unsub());
+  }, []);
+
+  // Listener para a Tabela Ativa
   useEffect(() => {
     if (activeTab === 'inicio') return;
 
@@ -46,17 +112,38 @@ export default function App() {
     return () => unsubscribe();
   }, [activeTab]);
 
+  // Ativar Notificações no Navegador
+  const toggleNotifications = () => {
+    if (!('Notification' in window)) {
+      alert('Seu navegador não suporta notificações de área de trabalho.');
+      return;
+    }
+    if (Notification.permission === 'granted') {
+      setNotificationsEnabled(true);
+      alert('Alertas de novas demandas já estão ativos!');
+    } else {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          setNotificationsEnabled(true);
+          new Notification('Faturamento Unimed', {
+            body: 'Notificações ativadas! Você será avisada quando chegar uma nova demanda.',
+            icon: '/logo-unimed.png'
+          });
+        }
+      });
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Upload com limite de 700KB para caber no limite de 1MB do Firebase
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 700 * 1024) {
-        alert("O arquivo é muito grande! Por favor, selecione um arquivo de até 700KB (ou tire um print/compressão da imagem).");
+        alert("O arquivo é muito grande! Selecione um arquivo de até 700KB.");
         e.target.value = "";
         return;
       }
@@ -74,7 +161,6 @@ export default function App() {
     }
   };
 
-  // Função para converter Base64 em Blob URL e abrir sem bloqueios do navegador
   const handleOpenAnexo = (anexo) => {
     if (!anexo || !anexo.anexoUrl) return;
 
@@ -91,9 +177,8 @@ export default function App() {
         const blob = new Blob([u8arr], { type: mime });
         const blobUrl = URL.createObjectURL(blob);
         
-        // Se for imagem, abre no modal interno. Se for documento/pdf, abre em nova guia
         if (mime.startsWith('image/')) {
-          setViewAnexo({ url: blobUrl, nome: anexo.anexoNome, tipo: mime, raw: anexo.anexoUrl });
+          setViewAnexo({ url: blobUrl, nome: anexo.anexoNome, tipo: mime });
         } else {
           window.open(blobUrl, '_blank');
         }
@@ -141,7 +226,7 @@ export default function App() {
       setFilePreview(null);
     } catch (err) {
       console.error("Erro ao salvar:", err);
-      alert("Erro ao salvar no banco de dados. Verifique se a imagem anexada não é muito grande.");
+      alert("Erro ao salvar no banco de dados.");
     }
   };
 
@@ -161,16 +246,17 @@ export default function App() {
     setTimeout(() => setFeedbackEnviado(false), 5000);
   };
 
-  const getSLAStatus = (dateString) => {
+  // Função Genérica de Cálculo de SLA (Horas Personalizadas)
+  const getSLAStatus = (dateString, maxHours = 48) => {
     if (!dateString) return null;
     const requestDate = new Date(dateString);
     const now = new Date();
     const diffHours = (now - requestDate) / (1000 * 60 * 60);
 
-    if (diffHours > 48) {
-      return { label: 'SLA Estourado (+48h)', color: 'bg-red-100 text-red-800 border-red-300' };
-    } else if (diffHours > 36) {
-      return { label: 'Atenção SLA (Próximo das 48h)', color: 'bg-yellow-100 text-yellow-800 border-yellow-300' };
+    if (diffHours > maxHours) {
+      return { label: `SLA Estourado (+${maxHours}h)`, color: 'bg-red-100 text-red-800 border-red-300' };
+    } else if (diffHours > maxHours * 0.75) {
+      return { label: `Atenção SLA (${maxHours * 0.75}h+)`, color: 'bg-yellow-100 text-yellow-800 border-yellow-300' };
     }
     return { label: 'Dentro do SLA', color: 'bg-emerald-100 text-emerald-800 border-emerald-300' };
   };
@@ -218,6 +304,11 @@ export default function App() {
     setFilterDateEnd('');
   };
 
+  // Cálculo Totais Dashboard Geral
+  const totalPendenciasGeral = dashStats.criticas.pendente + dashStats.sem_valor.pendente + dashStats.sem_tuss.pendente + dashStats.chamados.pendente;
+  const totalEmAndamentoGeral = dashStats.criticas.andamento + dashStats.sem_valor.andamento + dashStats.sem_tuss.andamento + dashStats.chamados.andamento;
+  const totalConcluidosGeral = dashStats.criticas.concluido + dashStats.sem_valor.concluido + dashStats.sem_tuss.concluido + dashStats.chamados.concluido;
+
   return (
     <div className="flex h-screen bg-slate-100 text-slate-800 font-sans">
       {/* Sidebar Lateral */}
@@ -234,6 +325,21 @@ export default function App() {
               <ShieldAlert className="w-6 h-6 text-emerald-400" /> Faturamento
             </h1>
             <p className="text-xs text-emerald-200/70 font-medium">Painel Operacional e Chamados Internos</p>
+          </div>
+
+          {/* Botão de Ativar Notificações */}
+          <div className="p-4 border-b border-emerald-900/50">
+            <button
+              onClick={toggleNotifications}
+              className={`w-full text-xs font-semibold px-3 py-2 rounded-lg flex items-center justify-center gap-2 transition ${
+                notificationsEnabled 
+                  ? 'bg-emerald-800 text-emerald-200 border border-emerald-700' 
+                  : 'bg-emerald-900/80 hover:bg-emerald-800 text-emerald-300 border border-emerald-800'
+              }`}
+            >
+              {notificationsEnabled ? <BellRing className="w-4 h-4 text-emerald-300 animate-pulse" /> : <Bell className="w-4 h-4" />}
+              {notificationsEnabled ? 'Alertas Ativos' : 'Ativar Alerta de Demandas'}
+            </button>
           </div>
 
           <nav className="p-4 space-y-2">
@@ -315,6 +421,8 @@ export default function App() {
         {/* PÁGINA PRINCIPAL */}
         {activeTab === 'inicio' ? (
           <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-slate-50">
+            
+            {/* Banner de Boas-Vindas */}
             <div className="bg-gradient-to-r from-emerald-900 to-emerald-800 rounded-2xl p-8 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="space-y-3 max-w-2xl">
                 <div className="inline-flex items-center gap-2 bg-emerald-700/50 px-3 py-1 rounded-full text-xs font-semibold text-emerald-200 border border-emerald-600">
@@ -328,6 +436,108 @@ export default function App() {
               <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/10 text-center min-w-[220px]">
                 <img src="/logo-unimed.png" alt="Unimed Caruaru" className="h-12 mx-auto mb-2 object-contain filter drop-shadow" onError={(e) => e.target.style.display = 'none'} />
                 <span className="text-xs font-bold text-emerald-200 block uppercase tracking-wider">Unimed Caruaru</span>
+              </div>
+            </div>
+
+            {/* DASHBOARD EM TEMPO REAL */}
+            <div className="space-y-4">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-emerald-600" /> Status Geral das Demandas (Tempo Real)
+              </h2>
+
+              {/* Cards Visão Geral */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div className="bg-white p-5 rounded-2xl border border-amber-200 shadow-sm flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-amber-700 uppercase tracking-wider block">Total Pendências</span>
+                    <span className="text-3xl font-extrabold text-amber-950">{totalPendenciasGeral}</span>
+                    <span className="text-xs text-slate-500 block mt-1">Aguardando atendimento</span>
+                  </div>
+                  <div className="p-3 bg-amber-50 text-amber-600 rounded-xl border border-amber-200">
+                    <Clock className="w-7 h-7" />
+                  </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-2xl border border-blue-200 shadow-sm flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-blue-700 uppercase tracking-wider block">Em Andamento</span>
+                    <span className="text-3xl font-extrabold text-blue-950">{totalEmAndamentoGeral}</span>
+                    <span className="text-xs text-slate-500 block mt-1">Em tratativa técnica</span>
+                  </div>
+                  <div className="p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-200">
+                    <Activity className="w-7 h-7" />
+                  </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-2xl border border-emerald-200 shadow-sm flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider block">Concluídos</span>
+                    <span className="text-3xl font-extrabold text-emerald-950">{totalConcluidosGeral}</span>
+                    <span className="text-xs text-slate-500 block mt-1">Demandas finalizadas</span>
+                  </div>
+                  <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-200">
+                    <CheckCircle className="w-7 h-7" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Detalhamento por Módulo com Destaque para Chamados Internos */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                
+                {/* Status Críticas e Erros */}
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-2">
+                  <div className="flex justify-between items-center border-b pb-2">
+                    <span className="font-bold text-xs text-slate-800">Críticas e Erros</span>
+                    <span className="text-xs font-mono font-bold bg-slate-100 px-2 py-0.5 rounded">{dashStats.criticas.total} total</span>
+                  </div>
+                  <div className="text-xs space-y-1 text-slate-600">
+                    <div className="flex justify-between"><span>Pendentes:</span> <strong className="text-amber-600">{dashStats.criticas.pendente}</strong></div>
+                    <div className="flex justify-between"><span>Em Andamento:</span> <strong className="text-blue-600">{dashStats.criticas.andamento}</strong></div>
+                    <div className="flex justify-between"><span>Concluídos:</span> <strong className="text-emerald-600">{dashStats.criticas.concluido}</strong></div>
+                  </div>
+                </div>
+
+                {/* Status Proced. Sem Valor */}
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-2">
+                  <div className="flex justify-between items-center border-b pb-2">
+                    <span className="font-bold text-xs text-slate-800">Proced. Sem Valor (SLA 48h)</span>
+                    <span className="text-xs font-mono font-bold bg-slate-100 px-2 py-0.5 rounded">{dashStats.sem_valor.total} total</span>
+                  </div>
+                  <div className="text-xs space-y-1 text-slate-600">
+                    <div className="flex justify-between"><span>Pendentes:</span> <strong className="text-amber-600">{dashStats.sem_valor.pendente}</strong></div>
+                    <div className="flex justify-between"><span>SLA Estourado (+48h):</span> <strong className="text-red-600">{dashStats.sem_valor.slaEstourado}</strong></div>
+                    <div className="flex justify-between"><span>Concluídos:</span> <strong className="text-emerald-600">{dashStats.sem_valor.concluido}</strong></div>
+                  </div>
+                </div>
+
+                {/* Status Proced. Sem TUSS */}
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-2">
+                  <div className="flex justify-between items-center border-b pb-2">
+                    <span className="font-bold text-xs text-slate-800">Proced. Sem TUSS (SLA 24h)</span>
+                    <span className="text-xs font-mono font-bold bg-slate-100 px-2 py-0.5 rounded">{dashStats.sem_tuss.total} total</span>
+                  </div>
+                  <div className="text-xs space-y-1 text-slate-600">
+                    <div className="flex justify-between"><span>Pendentes:</span> <strong className="text-amber-600">{dashStats.sem_tuss.pendente}</strong></div>
+                    <div className="flex justify-between"><span>SLA Estourado (+24h):</span> <strong className="text-red-600">{dashStats.sem_tuss.slaEstourado}</strong></div>
+                    <div className="flex justify-between"><span>Concluídos:</span> <strong className="text-emerald-600">{dashStats.sem_tuss.concluido}</strong></div>
+                  </div>
+                </div>
+
+                {/* DESTAQUE: Chamados Internos */}
+                <div className="bg-emerald-50/70 p-4 rounded-xl border border-emerald-300 shadow-sm space-y-2">
+                  <div className="flex justify-between items-center border-b border-emerald-200 pb-2">
+                    <span className="font-bold text-xs text-emerald-900 flex items-center gap-1">
+                      <MessageSquare className="w-3.5 h-3.5 text-emerald-600" /> Chamados Internos
+                    </span>
+                    <span className="text-xs font-mono font-bold bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded">{dashStats.chamados.total} total</span>
+                  </div>
+                  <div className="text-xs space-y-1 text-slate-700">
+                    <div className="flex justify-between"><span>Pendentes:</span> <strong className="text-amber-700">{dashStats.chamados.pendente}</strong></div>
+                    <div className="flex justify-between"><span>Alta Prioridade:</span> <strong className="text-red-600">{dashStats.chamados.altaPrioridade}</strong></div>
+                    <div className="flex justify-between"><span>Concluídos:</span> <strong className="text-emerald-700">{dashStats.chamados.concluido}</strong></div>
+                  </div>
+                </div>
+
               </div>
             </div>
 
@@ -365,7 +575,7 @@ export default function App() {
                       <FileCode className="w-6 h-6 text-blue-600" />
                     </div>
                     <h3 className="font-bold text-slate-800 text-lg group-hover:text-emerald-700 transition">Proced. Sem TUSS</h3>
-                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">Depara de códigos PROFAT com tabelas XML, TUSS e Anvisa.</p>
+                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">Depara de códigos PROFAT com tabelas XML, TUSS, Mat./Med. e SLA de 24 horas.</p>
                   </div>
                   <span className="text-xs font-bold text-emerald-600 mt-4 flex items-center gap-1 group-hover:underline">Acessar Módulo <ChevronRight className="w-3.5 h-3.5" /></span>
                 </div>
@@ -376,7 +586,7 @@ export default function App() {
                       <MessageSquare className="w-6 h-6 text-purple-600" />
                     </div>
                     <h3 className="font-bold text-slate-800 text-lg group-hover:text-emerald-700 transition">Chamados Internos</h3>
-                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">Central de chamados com código único, prioridade e anexos.</p>
+                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">Central de chamados com código único, prioridade e suporte a anexos.</p>
                   </div>
                   <span className="text-xs font-bold text-emerald-600 mt-4 flex items-center gap-1 group-hover:underline">Acessar Módulo <ChevronRight className="w-3.5 h-3.5" /></span>
                 </div>
@@ -443,7 +653,7 @@ export default function App() {
                 <h2 className="text-2xl font-bold text-slate-800">
                   {activeTab === 'criticas' && 'Gestão de Críticas e Erros (SoulMV / SAW)'}
                   {activeTab === 'sem_valor' && 'Procedimentos Sem Valor (Alerta SLA 48h)'}
-                  {activeTab === 'sem_tuss' && 'Procedimentos Sem TUSS'}
+                  {activeTab === 'sem_tuss' && 'Procedimentos Sem TUSS (Alerta SLA 24h & Mat./Med.)'}
                   {activeTab === 'chamados' && 'Central de Chamados e Suporte Interno'}
                 </h2>
                 <p className="text-sm text-slate-500">
@@ -516,7 +726,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Tabela */}
+              {/* Tabela de Dados */}
               <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 <table className="w-full text-left text-sm text-slate-600">
                   <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500 font-semibold">
@@ -556,7 +766,8 @@ export default function App() {
                             <>
                               <th className="p-4">Profat / Descrição</th>
                               <th className="p-4">TUSS / Tabela XML</th>
-                              <th className="p-4">Anvisa</th>
+                              <th className="p-4">Alerta SLA (24h)</th>
+                              <th className="p-4 text-center">Foto Mat./Med.</th>
                               <th className="p-4">Empresa / Convênio</th>
                             </>
                           )}
@@ -573,7 +784,9 @@ export default function App() {
                       </tr>
                     ) : (
                       filteredAndSortedItems.map((item) => {
-                        const sla = activeTab === 'sem_valor' ? getSLAStatus(item.dtSolicitacao) : null;
+                        const sla48 = activeTab === 'sem_valor' ? getSLAStatus(item.dtSolicitacao, 48) : null;
+                        const sla24 = activeTab === 'sem_tuss' ? getSLAStatus(item.dtSolicitacao, 24) : null;
+
                         return (
                           <tr key={item.id} className="hover:bg-slate-50 transition">
                             <td className="p-4">
@@ -662,9 +875,9 @@ export default function App() {
                                     <td className="p-4 font-medium text-slate-800">{item.profat} - {item.descricao}</td>
                                     <td className="p-4 text-xs font-semibold text-slate-700">{item.tabela || '-'}</td>
                                     <td className="p-4">
-                                      {sla && (
-                                        <span className={`px-2.5 py-1 text-xs rounded-md font-semibold border ${sla.color}`}>
-                                          {sla.label}
+                                      {sla48 && (
+                                        <span className={`px-2.5 py-1 text-xs rounded-md font-semibold border ${sla48.color}`}>
+                                          {sla48.label}
                                         </span>
                                       )}
                                     </td>
@@ -677,7 +890,26 @@ export default function App() {
                                   <>
                                     <td className="p-4 font-medium text-slate-800">{item.profat} - {item.descricao}</td>
                                     <td className="p-4">{item.tuss || 'Sem TUSS'} ({item.tabelaXml || '-'})</td>
-                                    <td className="p-4">{item.anvisa || '-'}</td>
+                                    <td className="p-4">
+                                      {sla24 && (
+                                        <span className={`px-2.5 py-1 text-xs rounded-md font-semibold border ${sla24.color}`}>
+                                          {sla24.label}
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="p-4 text-center">
+                                      {item.anexoUrl ? (
+                                        <button 
+                                          onClick={() => handleOpenAnexo(item)}
+                                          className="inline-flex items-center gap-1 text-xs text-blue-800 hover:bg-blue-100 bg-blue-50 p-1.5 rounded border border-blue-300 font-semibold transition"
+                                          title={item.anexoNome}
+                                        >
+                                          <ImageIcon className="w-3.5 h-3.5 text-blue-600" /> Ver Foto Mat/Med
+                                        </button>
+                                      ) : (
+                                        <span className="text-xs text-slate-400">-</span>
+                                      )}
+                                    </td>
                                     <td className="p-4">{item.empresa} / {item.convenio}</td>
                                   </>
                                 )}
@@ -726,13 +958,13 @@ export default function App() {
             </div>
             
             <div className="p-6 overflow-auto flex items-center justify-center bg-slate-100 flex-1">
-              <img src={viewAnexo.url} alt="Anexo do Chamado" className="max-h-[65vh] object-contain rounded border border-slate-300 shadow-md" />
+              <img src={viewAnexo.url} alt="Anexo Anexado" className="max-h-[65vh] object-contain rounded border border-slate-300 shadow-md" />
             </div>
 
             <div className="p-4 bg-white border-t flex justify-end gap-3">
               <a 
                 href={viewAnexo.url} 
-                download={viewAnexo.nome || 'anexo_chamado'}
+                download={viewAnexo.nome || 'anexo_registro'}
                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition"
               >
                 <Download className="w-4 h-4" /> Baixar Imagem
@@ -949,11 +1181,19 @@ export default function App() {
                           <input required name="descricao" value={formData.descricao || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
                         </div>
                       </div>
-                      <div className="grid grid-cols-3 gap-4">
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-600 mb-1">Data da Solicitação (Para Alerta SLA 24h)</label>
+                          <input type="datetime-local" required name="dtSolicitacao" value={formData.dtSolicitacao || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                        </div>
                         <div>
                           <label className="block text-xs font-semibold text-slate-600 mb-1">Tabela XML</label>
                           <input name="tabelaXml" value={formData.tabelaXml || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
                         </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs font-semibold text-slate-600 mb-1">TUSS</label>
                           <input name="tuss" value={formData.tuss || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
@@ -963,6 +1203,7 @@ export default function App() {
                           <input name="anvisa" value={formData.anvisa || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
                         </div>
                       </div>
+
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs font-semibold text-slate-600 mb-1">Empresa</label>
@@ -972,6 +1213,17 @@ export default function App() {
                           <label className="block text-xs font-semibold text-slate-600 mb-1">Convênio</label>
                           <input name="convenio" value={formData.convenio || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
                         </div>
+                      </div>
+
+                      {/* Anexo Exclusivo Foto Mat./Med. */}
+                      <div className="border border-dashed border-blue-300 p-4 rounded-xl bg-blue-50/50">
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">Anexar Imagem do Mat./Med. (Opcional - Max 700KB)</label>
+                        <input type="file" accept="image/png, image/jpeg, application/pdf" onChange={handleFileChange} className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-100 file:text-blue-800 hover:file:bg-blue-200 cursor-pointer" />
+                        {filePreview && (
+                          <p className="mt-2 text-xs text-blue-700 font-semibold flex items-center gap-1">
+                            <Paperclip className="w-3.5 h-3.5" /> Arquivo selecionado: {filePreview}
+                          </p>
+                        )}
                       </div>
                     </>
                   )}
