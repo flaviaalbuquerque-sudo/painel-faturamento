@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 
 // URL do Webhook do Google Chat (Cole aqui a URL gerada no Espaço do Google Chat)
-const GOOGLE_CHAT_WEBHOOK_URL = ""; 
+const GOOGLE_CHAT_WEBHOOK_URL = "https://chat.googleapis.com/v1/spaces/AAQA2Rhg71I/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=bwdBx2HNJXP6qtP2L8Zg57BGfHrs5eD5WdLKhfCsOlw"; 
 
 // Opções do Filtro Múltiplo de Status
 const STATUS_OPTIONS = [
