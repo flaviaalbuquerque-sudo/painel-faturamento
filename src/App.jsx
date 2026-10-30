@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 
 // URL do Webhook do Google Chat (Cole aqui a URL se for utilizar integração direta com o Chat)
-const GOOGLE_CHAT_WEBHOOK_URL = ""; 
+const GOOGLE_CHAT_WEBHOOK_URL = "https://chat.googleapis.com/v1/spaces/AAQA2Rhg71I/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=bwdBx2HNJXP6qtP2L8Zg57BGfHrs5eD5WdLKhfCsOlw"; 
 
 // 40 Chamados NTI higienizados para a carga inicial/biblioteca
 const CHAMADOS_NTI_INICIAIS = [
