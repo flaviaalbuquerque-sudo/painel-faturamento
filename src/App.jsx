@@ -7,8 +7,11 @@ import {
   Home, Send, Filter, ArrowRight,
   Mail, Download, Image as ImageIcon, Bell, BellRing,
   BarChart3, Activity, CheckCircle, CheckSquare, Search, History,
-  ArrowUpDown, ArrowUp, ArrowDown, FileText
+  ArrowUpDown, ArrowUp, ArrowDown, FileText, MessageCircle
 } from 'lucide-react';
+
+// URL do Webhook do Google Chat (Cole aqui a URL se for utilizar integração direta com o Chat)
+const GOOGLE_CHAT_WEBHOOK_URL = ""; 
 
 // 40 Chamados NTI higienizados para a carga inicial/biblioteca
 const CHAMADOS_NTI_INICIAIS = [
@@ -232,7 +235,7 @@ export default function App() {
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 1024 * 1024) { // Limitador de 1 MB
+      if (file.size > 1024 * 1024) {
         alert("O arquivo é muito grande! O limite de tamanho permitido é de 1 MB.");
         e.target.value = "";
         return;
@@ -251,11 +254,11 @@ export default function App() {
     }
   };
 
-  // Upload na Janela de Conclusão (Max 1MB: PNG, JPG, PDF, DOC, DOCX)
+  // Upload na Janela de Conclusão (Max 1MB)
   const handleConclusionFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 1024 * 1024) { // Limitador de 1 MB
+      if (file.size > 1024 * 1024) {
         alert("O arquivo do parecer é muito grande! Por favor, selecione um arquivo de até 1 MB.");
         e.target.value = "";
         return;
@@ -338,15 +341,46 @@ export default function App() {
     setIsConclusionModalOpen(true);
   };
 
-  // Disparo do Aviso Pré-Formatado por E-mail
-  const triggerEmailNotification = (email, consideracoesTexto, itemRef) => {
-    if (!email) return;
+  // Disparo de E-mail via GMAIL WEB DIRETO
+  const triggerGmailWeb = (email, consideracoesTexto, itemRef) => {
+    if (!email) {
+      alert("Por favor, preencha o e-mail do solicitante.");
+      return;
+    }
     const refCod = itemRef?.numChamado ? `NTI #${itemRef.numChamado}` : (itemRef?.codChamado || itemRef?.codAtendimento || 'Demandas');
     const emailSubject = `[Painel Faturamento] Solicitação Concluída (${refCod})`;
-    const emailBody = `Mensagem: Sua solicitação foi atendida com sucesso. Favor acessar o painel para confirmar a demanda concluída.\n\nConsiderações do Faturamento:\n${consideracoesTexto || 'Demanda analisada e finalizada pelo setor.'}`;
-    
-    const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
-    window.location.href = mailtoUrl;
+    const emailBody = `Sua solicitação foi atendida com sucesso. Favor acessar o painel para confirmar a demanda concluída.\n\nConsiderações do Faturamento:\n${consideracoesTexto || 'Demanda analisada e finalizada pelo setor.'}`;
+
+    // Link direto para a janela de composição do Gmail Web
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+    window.open(gmailUrl, '_blank');
+  };
+
+  // Disparo para o Google Chat via Webhook
+  const sendGoogleChatNotification = async (itemRef, consideracoesTexto) => {
+    if (!GOOGLE_CHAT_WEBHOOK_URL) {
+      alert("URL do Webhook do Google Chat não configurada no sistema. Para habilitar, insira a URL do seu espaço na linha 19 do arquivo.");
+      return;
+    }
+
+    const refCod = itemRef?.numChamado ? `NTI #${itemRef.numChamado}` : (itemRef?.codChamado || itemRef?.codAtendimento || 'Demanda');
+    const messageText = `🟢 *Sua solicitação foi atendida com sucesso!*\n\n` +
+      `*Demanda:* ${refCod}\n` +
+      `*Solicitante:* ${itemRef?.emailSolicitante || itemRef?.usuario || 'Não informado'}\n` +
+      `*Parecer Técnico:* ${consideracoesTexto || 'Concluído pelo setor de Faturamento.'}\n\n` +
+      `_Favor acessar o painel para confirmar a demanda concluída._`;
+
+    try {
+      await fetch(GOOGLE_CHAT_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: messageText })
+      });
+      alert("✓ Notificação enviada com sucesso para o Google Chat!");
+    } catch (err) {
+      console.error("Erro ao enviar para o Google Chat:", err);
+      alert("Não foi possível enviar a notificação para o Google Chat.");
+    }
   };
 
   // Submissão da Conclusão da Demanda
@@ -374,10 +408,10 @@ export default function App() {
 
       setIsConclusionModalOpen(false);
 
-      // Dispara o e-mail pré-formatado se houver e-mail cadastrado
+      // Oferece envio no Gmail Web
       if (conclusionForm.emailSolicitante) {
-        if (window.confirm("Demanda concluída! Deseja enviar o aviso de e-mail ao solicitante agora?")) {
-          triggerEmailNotification(conclusionForm.emailSolicitante, conclusionForm.consideracoes, conclusionItem);
+        if (window.confirm("Demanda concluída! Deseja abrir a janela de e-mail no Gmail agora para notificar o solicitante?")) {
+          triggerGmailWeb(conclusionForm.emailSolicitante, conclusionForm.consideracoes, conclusionItem);
         }
       }
     } catch (err) {
@@ -451,8 +485,8 @@ export default function App() {
 
   const handleSendFeedback = (e) => {
     e.preventDefault();
-    const mailtoUrl = `mailto:flavia.albuquerque@hospitalunimedcaruaru.com.br?subject=[Painel Faturamento] ${feedback.tipo} de ${feedback.nome}&body=Nome: ${feedback.nome}%0D%0AE-mail: ${feedback.email}%0D%0ATipo: ${feedback.tipo}%0D%0A%0D%0AMensagem:%0D%0A${encodeURIComponent(feedback.mensagem)}`;
-    window.location.href = mailtoUrl;
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=flavia.albuquerque@hospitalunimedcaruaru.com.br&su=${encodeURIComponent(`[Painel Faturamento] ${feedback.tipo} de ${feedback.nome}`)}&body=${encodeURIComponent(`Nome: ${feedback.nome}\nE-mail: ${feedback.email}\nTipo: ${feedback.tipo}\n\nMensagem:\n${feedback.mensagem}`)}`;
+    window.open(gmailUrl, '_blank');
     setFeedbackEnviado(true);
     setTimeout(() => setFeedbackEnviado(false), 5000);
   };
@@ -876,7 +910,7 @@ export default function App() {
 
               {feedbackEnviado && (
                 <div className="mb-4 p-3 bg-emerald-100 border border-emerald-300 text-emerald-800 rounded-lg text-xs font-semibold">
-                  ✓ Abrindo gerenciador de e-mail para envio para Flávia Albuquerque!
+                  ✓ Abrindo janela de e-mail no Gmail para Flávia Albuquerque!
                 </div>
               )}
 
@@ -908,7 +942,7 @@ export default function App() {
                 <div className="flex justify-between items-center pt-2">
                   <span className="text-xs text-slate-400">Destinatário: flavia.albuquerque@hospitalunimedcaruaru.com.br</span>
                   <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm px-5 py-2.5 rounded-lg shadow flex items-center gap-2 transition">
-                    <Send className="w-4 h-4" /> Enviar Mensagem
+                    <Send className="w-4 h-4" /> Enviar no Gmail
                   </button>
                 </div>
               </form>
@@ -1326,7 +1360,7 @@ export default function App() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">E-mail do Solicitante (Para Notificação) *</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">E-mail do Solicitante *</label>
                 <input 
                   type="email" 
                   required 
@@ -1364,24 +1398,35 @@ export default function App() {
                 )}
               </div>
 
-              <div className="pt-3 flex items-center justify-between border-t">
-                <button
-                  type="button"
-                  onClick={() => triggerEmailNotification(conclusionForm.emailSolicitante, conclusionForm.consideracoes, conclusionItem)}
-                  className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-lg text-xs font-bold border border-blue-200 flex items-center gap-1.5 transition"
-                  title="Testar disparo do aviso por e-mail"
-                >
-                  <Mail className="w-3.5 h-3.5" /> Enviar Aviso
-                </button>
-
-                <div className="flex gap-2">
-                  <button type="button" onClick={() => setIsConclusionModalOpen(false)} className="px-4 py-2 border rounded-lg text-xs font-semibold text-slate-600">
-                    Cancelar
+              {/* Botões de Disparo de Avisos (Gmail Web e Google Chat) */}
+              <div className="p-3 bg-slate-100 rounded-xl space-y-2 border">
+                <span className="text-xs font-bold text-slate-700 block">Enviar Notificação de Conclusão:</span>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => triggerGmailWeb(conclusionForm.emailSolicitante, conclusionForm.consideracoes, conclusionItem)}
+                    className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition shadow-sm"
+                  >
+                    <Mail className="w-3.5 h-3.5" /> Enviar via Gmail Web
                   </button>
-                  <button type="submit" className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow transition">
-                    Concluir Demanda
+
+                  <button
+                    type="button"
+                    onClick={() => sendGoogleChatNotification(conclusionItem, conclusionForm.consideracoes)}
+                    className="px-3 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition shadow-sm"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5 text-emerald-300" /> Enviar no Google Chat
                   </button>
                 </div>
+              </div>
+
+              <div className="pt-3 flex justify-end gap-2 border-t">
+                <button type="button" onClick={() => setIsConclusionModalOpen(false)} className="px-4 py-2 border rounded-lg text-xs font-semibold text-slate-600">
+                  Cancelar
+                </button>
+                <button type="submit" className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow transition">
+                  Salvar e Concluir Demanda
+                </button>
               </div>
             </form>
           </div>
