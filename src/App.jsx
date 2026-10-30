@@ -6,52 +6,52 @@ import {
   FileCode, ChevronRight, X, Edit3, Trash2, MessageSquare, Paperclip,
   Home, Send, Filter, ArrowRight,
   Mail, Download, Image as ImageIcon, Bell, BellRing,
-  BarChart3, Activity, CheckCircle, Search, History,
-  ArrowUpDown, ArrowUp, ArrowDown
+  BarChart3, Activity, CheckCircle, CheckSquare, Search, History,
+  ArrowUpDown, ArrowUp, ArrowDown, FileText
 } from 'lucide-react';
 
 // 40 Chamados NTI higienizados para a carga inicial/biblioteca
 const CHAMADOS_NTI_INICIAIS = [
-  { codAtendimento: '', numChamado: '47862', data_abertura: '2025-11-25', criticaErro: 'As contas que foram colocadas em remessa somem da tela, e para encontrar a remessa precisamos procurar através de uma das contas que foram inseridas, para depois selecionar e conseguir entregar a remessa concluindo assim o processo', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '4297364', numChamado: '48162', data_abertura: '2025-11-27', criticaErro: 'atendimento 4297364 SADT que teve alta no dia 25/11/2025 às 11:17h, porém não consegui colocar na esteira, pois a conta não aparece', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '177287', numChamado: '48291', data_abertura: '2025-11-28', criticaErro: 'Ao puxar as contas sem remessa na esteira unimed Recife apareceu uma conta 177287 que não está em remessa inforando que já foi gerado xml. Conferi no SAW a guia referente ao atendimento e realmente essa conta não foi postada. Por favor verificar porque ela aparece o status marcado com xml gerado', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed Recife', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '177213', numChamado: '48316', data_abertura: '2025-11-28', criticaErro: 'Ocorreu um erro onde 4 contas que já estava em remessa e importada no SAW, a esteira ao puxar as contas pelo filtro sem remessa trouxe na informação e acabou atribuindo as mesmas em outra remessa. Contas: 177213, 177855, 178411, 177208.', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '48335', data_abertura: '2025-11-28', criticaErro: 'ao recalcular as contas está dobrando as diárias dentro da conta', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '48511', data_abertura: '2025-12-01', criticaErro: 'Ao puxar as contas por data, percebemos que a esteira está colocando algumas contas fora do período selecionado, o que está ocasionando o não faturamento da conta na data correta, gerando dessa forma atraso no faturamento. Por favor ajustar.', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '177654', numChamado: '50226', data_abertura: '2025-12-10', criticaErro: 'Opme não está aparecendo no easyaudit para as auditoras', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Tratativa: problemas operacionais (conta 177654)' },
-  { codAtendimento: '179644', numChamado: '50279', data_abertura: '2025-12-10', criticaErro: 'opme, divergencia na quantidade na fatura, no sistema mv.conta 179644', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '52041', data_abertura: '2025-12-31', criticaErro: 'Ao selecionar status sincronizar, o filtro não traz todas as contas.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '4371189', numChamado: '52356', data_abertura: '2026-01-05', criticaErro: 'Atendimento 4371189 conv 40, 30/12/2025 não aparece na esteira de conta, essa conta precisa passar na auditoria de enfermagem.', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Convênio 40', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '157472', numChamado: '52457', data_abertura: '2026-01-05', criticaErro: 'abrir a remessa 157472 conv.12 (deu erro para retirar as contas)', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Convênio 12', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '157989', numChamado: '53538', data_abertura: '2026-01-12', criticaErro: 'Ao tentar enviar o arquivo 157989, o sistema informa o erro de integridade.', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '55258', data_abertura: '2026-01-26', criticaErro: 'Erro ao gerar xml, na aba monitoração de faturamento. Usuário: Dafne.luiza', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'Dafne Luiza', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '55482', data_abertura: '2026-01-28', criticaErro: 'Ao tentar gerar remessa no Easy Audit, está aparecendo um erro, e não aparece a remessa no sistema, só que no Mv a remessa foi gerada.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '55723', data_abertura: '2026-01-30', criticaErro: 'erro no status de sincronização easy', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '62177', data_abertura: '2026-03-16', criticaErro: 'Divergências de valores no OPME, auditoria de enfermagem altera os materiais e não assume no Mv.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '64133', data_abertura: '2026-04-01', criticaErro: 'Erro ao gerar o relatório para imprimir a conta e ao fechar a conta.', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '66550', data_abertura: '2026-04-15', criticaErro: 'Erro ao gerar relatório 10470 no unireport.', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '70475', data_abertura: '2026-05-15', criticaErro: 'duplicidade na esteira de conta no Easy Audit.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '48050', data_abertura: '2025-11-20', criticaErro: 'Remessas duplicando no Easy Audit', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '177661', numChamado: '48784', data_abertura: '2025-12-02', criticaErro: 'Conta 177661 não assumiu a auditoria no mv', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '41194', data_abertura: '2025-10-03', criticaErro: 'Quebra de parciais automático no sistema', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Configurações do sistema' },
-  { codAtendimento: '', numChamado: '43789', data_abertura: '2025-10-21', criticaErro: 'Duplicidade de códigos de serviço no CEMUC', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'CEMUC', usuario: 'NTI Import', observacao: 'Configurações do sistema' },
-  { codAtendimento: '', numChamado: '43054', data_abertura: '2025-10-21', criticaErro: 'Solicitação de Melhorias e Correções para a Ferramenta Easy Audit', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitações de melhoria' },
-  { codAtendimento: '', numChamado: '44031', data_abertura: '2025-10-23', criticaErro: 'Restrição que impeça a utilização da mesma guia em dois atendimentos ambulatoriais distintos', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitações de melhoria' },
-  { codAtendimento: '', numChamado: '44378', data_abertura: '2025-10-28', criticaErro: 'Importação de Códigos Laboratoriais (Unilab) para Conta Hospitalar', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unilab', usuario: 'NTI Import', observacao: 'Configurações do sistema' },
-  { codAtendimento: '', numChamado: '61632', data_abertura: '2026-03-01', criticaErro: 'Limitação de cadastro de porte no SOUL MV', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
-  { codAtendimento: '', numChamado: '63948', data_abertura: '2026-03-30', criticaErro: 'realização de higienização da base de dados no sistema MV Hospitalar no cadastro do beneficiário', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
-  { codAtendimento: '', numChamado: '63958', data_abertura: '2026-03-30', criticaErro: 'Atualização da tabela CASSI', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'CASSI', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
-  { codAtendimento: '', numChamado: '69617', data_abertura: '2026-05-08', criticaErro: 'Solicitação de relatório para Jean', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
-  { codAtendimento: '', numChamado: '69690', data_abertura: '2026-05-08', criticaErro: 'Solicitação de lógica para o relatório 12590', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Esclarecimento da lógica do relatório 12590' },
-  { codAtendimento: '', numChamado: '70291', data_abertura: '2026-05-13', criticaErro: 'Insert tabelas 72 sulamerica', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'SulAmérica', usuario: 'NTI Import', observacao: 'Insert de atualização dos valores da TABELA 72 do sulamerica' },
-  { codAtendimento: '', numChamado: '70421', data_abertura: '2026-05-14', criticaErro: 'Solicitação de ajuste no relatório - 10470', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Relatório 10470 - unireport não esta trazendo alguns atendimentos' },
-  { codAtendimento: '', numChamado: '70903', data_abertura: '2026-05-20', criticaErro: 'Ajuste de todos os setores e origem para todos os usuários do faturamento', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Ajuste de setores/origens para acesso completo a contas' },
-  { codAtendimento: '', numChamado: '71048', data_abertura: '2026-05-21', criticaErro: 'Extração de relatório via banco para identificar inconsistências cadastrais nas tabelas de faturamento (PROFAT sem TUSS)', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Mapeamento de PROFATs sem vinculo TUSS' },
-  { codAtendimento: '', numChamado: '71086', data_abertura: '2026-05-21', criticaErro: 'Extração de dados via banco para mapeamento e parametrização de valores zerados ou ausentes', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Mapeamento de itens PROFAT sem preço/vigência' },
-  { codAtendimento: '', numChamado: '71420', data_abertura: '2026-05-25', criticaErro: 'Dados como prescrição, evolução dos pacientes não aparece no PEP', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Inconsistência de exibição no PEP' },
-  { codAtendimento: '', numChamado: '74153', data_abertura: '2026-06-15', criticaErro: 'Configuração do convênio 50 na empresa 5 mv - saw', sistema: 'SAW', status: 'Em Andamento', empresa: 'Empresa 5', convenio: 'Convênio 50', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
-  { codAtendimento: '', numChamado: '82.992', data_abertura: '2026-07-01', criticaErro: 'Acréscimo de aba de observação de faturamento no Easy Audit', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitado via ClickUp' },
-  { codAtendimento: '', numChamado: '86.861', data_abertura: '2026-07-10', criticaErro: 'Solicitação de Raspberry / Estação de Trabalho', sistema: 'Hardware', status: 'Aguardando TI', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitado via ClickUp' }
+  { codAtendimento: '', numChamado: '47862', data_abertura: '2025-11-25', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'As contas que foram colocadas em remessa somem da tela, e para encontrar a remessa precisamos procurar através de uma das contas que foram inseridas, para depois selecionar e conseguir entregar a remessa concluindo assim o processo', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '4297364', numChamado: '48162', data_abertura: '2025-11-27', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'atendimento 4297364 SADT que teve alta no dia 25/11/2025 às 11:17h, porém não consegui colocar na esteira, pois a conta não aparece', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '177287', numChamado: '48291', data_abertura: '2025-11-28', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Ao puxar as contas sem remessa na esteira unimed Recife apareceu uma conta 177287 que não está em remessa inforando que já foi gerado xml. Conferi no SAW a guia referente ao atendimento e realmente essa conta não foi postada. Por favor verificar porque ela aparece o status marcado com xml gerado', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed Recife', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '177213', numChamado: '48316', data_abertura: '2025-11-28', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Ocorreu um erro onde 4 contas que já estava em remessa e importada no SAW, a esteira ao puxar as contas pelo filtro sem remessa trouxe na informação e acabou atribuindo as mesmas em outra remessa. Contas: 177213, 177855, 178411, 177208.', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '48335', data_abertura: '2025-11-28', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'ao recalcular as contas está dobrando as diárias dentro da conta', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '48511', data_abertura: '2025-12-01', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Ao puxar as contas por data, percebemos que a esteira está colocando algumas contas fora do período selecionado, o que está ocasionando o não faturamento da conta na data correta, gerando dessa forma atraso no faturamento. Por favor ajustar.', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '177654', numChamado: '50226', data_abertura: '2025-12-10', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Opme não está aparecendo no easyaudit para as auditoras', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Tratativa: problemas operacionais (conta 177654)' },
+  { codAtendimento: '179644', numChamado: '50279', data_abertura: '2025-12-10', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'opme, divergencia na quantidade na fatura, no sistema mv.conta 179644', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '52041', data_abertura: '2025-12-31', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Ao selecionar status sincronizar, o filtro não traz todas as contas.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '4371189', numChamado: '52356', data_abertura: '2026-01-05', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Atendimento 4371189 conv 40, 30/12/2025 não aparece na esteira de conta, essa conta precisa passar na auditoria de enfermagem.', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Convênio 40', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '157472', numChamado: '52457', data_abertura: '2026-01-05', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'abrir a remessa 157472 conv.12 (deu erro para retirar as contas)', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Convênio 12', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '157989', numChamado: '53538', data_abertura: '2026-01-12', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Ao tentar enviar o arquivo 157989, o sistema informa o erro de integridade.', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '55258', data_abertura: '2026-01-26', emailSolicitante: 'dafne.luiza@hospitalunimedcaruaru.com.br', criticaErro: 'Erro ao gerar xml, na aba monitoração de faturamento. Usuário: Dafne.luiza', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'Dafne Luiza', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '55482', data_abertura: '2026-01-28', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Ao tentar gerar remessa no Easy Audit, está aparecendo um erro, e não aparece a remessa no sistema, só que no Mv a remessa foi gerada.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '55723', data_abertura: '2026-01-30', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'erro no status de sincronização easy', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '62177', data_abertura: '2026-03-16', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Divergências de valores no OPME, auditoria de enfermagem altera os materiais e não assume no Mv.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '64133', data_abertura: '2026-04-01', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Erro ao gerar o relatório para imprimir a conta e ao fechar a conta.', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '66550', data_abertura: '2026-04-15', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Erro ao gerar relatório 10470 no unireport.', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '70475', data_abertura: '2026-05-15', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'duplicidade na esteira de conta no Easy Audit.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '48050', data_abertura: '2025-11-20', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Remessas duplicando no Easy Audit', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '177661', numChamado: '48784', data_abertura: '2025-12-02', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Conta 177661 não assumiu a auditoria no mv', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '41194', data_abertura: '2025-10-03', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Quebra de parciais automático no sistema', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Configurações do sistema' },
+  { codAtendimento: '', numChamado: '43789', data_abertura: '2025-10-21', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Duplicidade de códigos de serviço no CEMUC', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'CEMUC', usuario: 'NTI Import', observacao: 'Configurações do sistema' },
+  { codAtendimento: '', numChamado: '43054', data_abertura: '2025-10-21', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Solicitação de Melhorias e Correções para a Ferramenta Easy Audit', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitações de melhoria' },
+  { codAtendimento: '', numChamado: '44031', data_abertura: '2025-10-23', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Restrição que impeça a utilização da mesma guia em dois atendimentos ambulatoriais distintos', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitações de melhoria' },
+  { codAtendimento: '', numChamado: '44378', data_abertura: '2025-10-28', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Importação de Códigos Laboratoriais (Unilab) para Conta Hospitalar', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unilab', usuario: 'NTI Import', observacao: 'Configurações do sistema' },
+  { codAtendimento: '', numChamado: '61632', data_abertura: '2026-03-01', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Limitação de cadastro de porte no SOUL MV', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
+  { codAtendimento: '', numChamado: '63948', data_abertura: '2026-03-30', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'realização de higienização da base de dados no sistema MV Hospitalar no cadastro do beneficiário', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
+  { codAtendimento: '', numChamado: '63958', data_abertura: '2026-03-30', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Atualização da tabela CASSI', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'CASSI', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
+  { codAtendimento: '', numChamado: '69617', data_abertura: '2026-05-08', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Solicitação de relatório para Jean', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
+  { codAtendimento: '', numChamado: '69690', data_abertura: '2026-05-08', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Solicitação de lógica para o relatório 12590', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Esclarecimento da lógica do relatório 12590' },
+  { codAtendimento: '', numChamado: '70291', data_abertura: '2026-05-13', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Insert tabelas 72 sulamerica', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'SulAmérica', usuario: 'NTI Import', observacao: 'Insert de atualização dos valores da TABELA 72 do sulamerica' },
+  { codAtendimento: '', numChamado: '70421', data_abertura: '2026-05-14', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Solicitação de ajuste no relatório - 10470', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Relatório 10470 - unireport não esta trazendo alguns atendimentos' },
+  { codAtendimento: '', numChamado: '70903', data_abertura: '2026-05-20', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Ajuste de todos os setores e origem para todos os usuários do faturamento', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Ajuste de setores/origens para acesso completo a contas' },
+  { codAtendimento: '', numChamado: '71048', data_abertura: '2026-05-21', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Extração de relatório via banco para identificar inconsistências cadastrais nas tabelas de faturamento (PROFAT sem TUSS)', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Mapeamento de PROFATs sem vinculo TUSS' },
+  { codAtendimento: '', numChamado: '71086', data_abertura: '2026-05-21', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Extração de dados via banco para mapeamento e parametrização de valores zerados ou ausentes', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Mapeamento de itens PROFAT sem preço/vigência' },
+  { codAtendimento: '', numChamado: '71420', data_abertura: '2026-05-25', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Dados como prescrição, evolução dos pacientes não aparece no PEP', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Inconsistência de exibição no PEP' },
+  { codAtendimento: '', numChamado: '74153', data_abertura: '2026-06-15', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Configuração do convênio 50 na empresa 5 mv - saw', sistema: 'SAW', status: 'Em Andamento', empresa: 'Empresa 5', convenio: 'Convênio 50', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
+  { codAtendimento: '', numChamado: '82.992', data_abertura: '2026-07-01', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Acréscimo de aba de observação de faturamento no Easy Audit', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitado via ClickUp' },
+  { codAtendimento: '', numChamado: '86.861', data_abertura: '2026-07-10', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Solicitação de Raspberry / Estação de Trabalho', sistema: 'Hardware', status: 'Aguardando TI', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitado via ClickUp' }
 ];
 
 export default function App() {
@@ -59,6 +59,15 @@ export default function App() {
   const [items, setItems] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
+
+  // Modal de Conclusão / Parecer Técnico
+  const [isConclusionModalOpen, setIsConclusionModalOpen] = useState(false);
+  const [conclusionItem, setConclusionItem] = useState(null);
+  const [conclusionForm, setConclusionForm] = useState({ consideracoes: '', anexoUrl: '', anexoNome: '', anexoTipo: '', emailSolicitante: '' });
+  const [conclusionFilePreview, setConclusionFilePreview] = useState(null);
+
+  // Modal para Visualizar Considerações/Parecer Salvo
+  const [viewParecerModal, setViewParecerModal] = useState(null);
 
   // Modal para Visualizar Anexo
   const [viewAnexo, setViewAnexo] = useState(null);
@@ -219,11 +228,12 @@ export default function App() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  // Upload no Formulário Principal (Max 1MB)
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 700 * 1024) {
-        alert("O arquivo é muito grande! Selecione um arquivo de até 700KB.");
+      if (file.size > 1024 * 1024) { // Limitador de 1 MB
+        alert("O arquivo é muito grande! O limite de tamanho permitido é de 1 MB.");
         e.target.value = "";
         return;
       }
@@ -236,6 +246,29 @@ export default function App() {
           anexoTipo: file.type
         }));
         setFilePreview(file.name);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Upload na Janela de Conclusão (Max 1MB: PNG, JPG, PDF, DOC, DOCX)
+  const handleConclusionFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 1024 * 1024) { // Limitador de 1 MB
+        alert("O arquivo do parecer é muito grande! Por favor, selecione um arquivo de até 1 MB.");
+        e.target.value = "";
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setConclusionForm(prev => ({
+          ...prev,
+          anexoUrl: reader.result,
+          anexoNome: file.name,
+          anexoTipo: file.type
+        }));
+        setConclusionFilePreview(file.name);
       };
       reader.readAsDataURL(file);
     }
@@ -277,9 +310,9 @@ export default function App() {
     const dataHojeIso = new Date().toISOString().substring(0, 10);
     if (activeTab === 'chamados') {
       const novoCodigoChamado = `CH-${Math.floor(100000 + Math.random() * 900000)}`;
-      setFormData({ codChamado: novoCodigoChamado, prioridade: 'Média', sistema: 'SoulMV', tipoChamado: 'Falha', status: 'Pendente', data_abertura: dataHojeIso });
+      setFormData({ codChamado: novoCodigoChamado, prioridade: 'Média', sistema: 'SoulMV', tipoChamado: 'Falha', status: 'Pendente', data_abertura: dataHojeIso, emailSolicitante: '' });
     } else {
-      setFormData({ status: 'Pendente', sistema: 'SoulMV', data_abertura: dataHojeIso });
+      setFormData({ status: 'Pendente', sistema: 'SoulMV', data_abertura: dataHojeIso, emailSolicitante: '' });
     }
     setIsModalOpen(true);
   };
@@ -289,6 +322,68 @@ export default function App() {
     setFormData({ ...item });
     setFilePreview(item.anexoNome || null);
     setIsModalOpen(true);
+  };
+
+  // Abertura do Modal Dedicado "Concluir Demanda"
+  const handleOpenConclusionModal = (item) => {
+    setConclusionItem(item);
+    setConclusionForm({
+      consideracoes: item.consideracoesConclusao || '',
+      anexoUrl: item.anexoConclusaoUrl || '',
+      anexoNome: item.anexoConclusaoNome || '',
+      anexoTipo: item.anexoConclusaoTipo || '',
+      emailSolicitante: item.emailSolicitante || ''
+    });
+    setConclusionFilePreview(item.anexoConclusaoNome || null);
+    setIsConclusionModalOpen(true);
+  };
+
+  // Disparo do Aviso Pré-Formatado por E-mail
+  const triggerEmailNotification = (email, consideracoesTexto, itemRef) => {
+    if (!email) return;
+    const refCod = itemRef?.numChamado ? `NTI #${itemRef.numChamado}` : (itemRef?.codChamado || itemRef?.codAtendimento || 'Demandas');
+    const emailSubject = `[Painel Faturamento] Solicitação Concluída (${refCod})`;
+    const emailBody = `Mensagem: Sua solicitação foi atendida com sucesso. Favor acessar o painel para confirmar a demanda concluída.\n\nConsiderações do Faturamento:\n${consideracoesTexto || 'Demanda analisada e finalizada pelo setor.'}`;
+    
+    const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+    window.location.href = mailtoUrl;
+  };
+
+  // Submissão da Conclusão da Demanda
+  const handleSaveConclusion = async (e) => {
+    e.preventDefault();
+    if (!conclusionItem) return;
+
+    const dataConclusao = new Date().toISOString();
+    const updateData = {
+      status: 'Concluído',
+      consideracoesConclusao: conclusionForm.consideracoes,
+      anexoConclusaoUrl: conclusionForm.anexoUrl,
+      anexoConclusaoNome: conclusionForm.anexoNome,
+      anexoConclusaoTipo: conclusionForm.anexoTipo,
+      emailSolicitante: conclusionForm.emailSolicitante,
+      dataConclusao: dataConclusao
+    };
+
+    try {
+      if (String(conclusionItem.id).startsWith('nti-')) {
+        setItems(prev => prev.map(i => i.id === conclusionItem.id ? { ...i, ...updateData } : i));
+      } else {
+        await updateDoc(doc(db, activeTab, conclusionItem.id), updateData);
+      }
+
+      setIsConclusionModalOpen(false);
+
+      // Dispara o e-mail pré-formatado se houver e-mail cadastrado
+      if (conclusionForm.emailSolicitante) {
+        if (window.confirm("Demanda concluída! Deseja enviar o aviso de e-mail ao solicitante agora?")) {
+          triggerEmailNotification(conclusionForm.emailSolicitante, conclusionForm.consideracoes, conclusionItem);
+        }
+      }
+    } catch (err) {
+      console.error("Erro ao concluir demanda:", err);
+      alert("Erro ao salvar a conclusão no banco de dados.");
+    }
   };
 
   const handleDeleteItem = async (id) => {
@@ -338,6 +433,12 @@ export default function App() {
 
   const handleStatusChange = async (id, newStatus) => {
     try {
+      const targetItem = items.find(i => i.id === id);
+      if (newStatus === 'Concluído') {
+        handleOpenConclusionModal(targetItem);
+        return;
+      }
+
       if (String(id).startsWith('nti-')) {
         setItems(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item));
       } else {
@@ -916,14 +1017,14 @@ export default function App() {
 
               {/* Tabela de Dados com Rolagem Horizontal Otimizada */}
               <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
-                <table className="w-full text-left text-sm text-slate-600 min-w-[1350px]">
+                <table className="w-full text-left text-sm text-slate-600 min-w-[1450px]">
                   <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500 font-semibold">
                     <tr>
                       <SortableHeader label="Status" sortKey="status" className="min-w-[180px]" />
                       {activeTab === 'chamados' ? (
                         <>
                           <SortableHeader label="Código / Título" sortKey="tituloChamado" className="min-w-[220px]" />
-                          <SortableHeader label="Solicitante / Setor" sortKey="nomeUsuario" className="min-w-[180px]" />
+                          <SortableHeader label="Solicitante / E-mail" sortKey="nomeUsuario" className="min-w-[200px]" />
                           <SortableHeader label="Sistema / Tipo" sortKey="sistema" className="min-w-[140px]" />
                           <th className="p-4 whitespace-nowrap min-w-[140px]">Contato</th>
                           <SortableHeader label="Prioridade" sortKey="prioridade" className="min-w-[120px]" />
@@ -964,7 +1065,7 @@ export default function App() {
                           <SortableHeader label="Usuário" sortKey="usuario" className="min-w-[120px]" />
                         </>
                       )}
-                      <th className="p-4 text-center whitespace-nowrap min-w-[170px]">Ações</th>
+                      <th className="p-4 text-center whitespace-nowrap min-w-[240px]">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -1014,7 +1115,7 @@ export default function App() {
                                 </td>
                                 <td className="p-4">
                                   <div className="font-medium text-slate-800">{item.nomeUsuario}</div>
-                                  <div className="text-xs text-slate-500">{item.setor}</div>
+                                  <div className="text-xs text-slate-500">{item.emailSolicitante || item.setor}</div>
                                 </td>
                                 <td className="p-4 whitespace-nowrap">
                                   <span className="font-medium text-slate-700">{item.sistema}</span>
@@ -1127,15 +1228,35 @@ export default function App() {
 
                             <td className="p-4 text-center whitespace-nowrap">
                               <div className="flex items-center justify-center gap-2">
+                                
+                                {/* Botão Dedicado "Concluir Demanda" */}
+                                {item.status !== 'Concluído' ? (
+                                  <button
+                                    onClick={() => handleOpenConclusionModal(item)}
+                                    className="flex items-center gap-1 text-xs text-emerald-800 hover:text-emerald-950 font-bold bg-emerald-100 hover:bg-emerald-200 px-2.5 py-1.5 rounded transition shadow-sm border border-emerald-300"
+                                    title="Concluir Demanda e Inserir Parecer"
+                                  >
+                                    <CheckSquare className="w-3.5 h-3.5 text-emerald-700" /> Concluir Demanda
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => setViewParecerModal(item)}
+                                    className="flex items-center gap-1 text-xs text-slate-700 hover:text-slate-900 font-bold bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded transition shadow-sm border border-slate-300"
+                                    title="Ver Parecer da Resolução"
+                                  >
+                                    <FileText className="w-3.5 h-3.5 text-slate-600" /> Ver Parecer
+                                  </button>
+                                )}
+
                                 <button 
                                   onClick={() => handleOpenEditModal(item)}
-                                  className="flex items-center gap-1 text-xs text-amber-700 hover:text-amber-900 font-medium bg-amber-50 hover:bg-amber-100 px-2.5 py-1.5 rounded transition shadow-sm border border-amber-200"
+                                  className="flex items-center gap-1 text-xs text-amber-700 hover:text-amber-900 font-medium bg-amber-50 hover:bg-amber-100 px-2 py-1.5 rounded transition shadow-sm border border-amber-200"
                                 >
                                   <Edit3 className="w-3.5 h-3.5" /> Editar
                                 </button>
                                 <button 
                                   onClick={() => handleDeleteItem(item.id)}
-                                  className="flex items-center gap-1 text-xs text-red-700 hover:text-red-900 font-medium bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded transition shadow-sm border border-red-200"
+                                  className="flex items-center gap-1 text-xs text-red-700 hover:text-red-900 font-medium bg-red-50 hover:bg-red-100 px-2 py-1.5 rounded transition shadow-sm border border-red-200"
                                   title="Excluir Registro"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" /> Excluir
@@ -1184,6 +1305,136 @@ export default function App() {
           </>
         )}
       </main>
+
+      {/* JANELA DE CONCLUSÃO DA DEMANDA / PARECER TÉCNICO */}
+      {isConclusionModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden border border-emerald-100">
+            <div className="px-6 py-4 bg-emerald-950 text-white flex justify-between items-center">
+              <h3 className="font-bold text-base flex items-center gap-2">
+                <CheckSquare className="w-5 h-5 text-emerald-400" /> Parecer de Conclusão da Demanda
+              </h3>
+              <button onClick={() => setIsConclusionModalOpen(false)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveConclusion} className="p-6 space-y-4">
+              <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-xs text-emerald-900">
+                <span className="font-bold block">Registrando solução para:</span>
+                <span className="font-mono text-xs">{conclusionItem?.numChamado ? `NTI #${conclusionItem.numChamado}` : (conclusionItem?.codChamado || conclusionItem?.criticaErro || 'Demanda')}</span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">E-mail do Solicitante (Para Notificação) *</label>
+                <input 
+                  type="email" 
+                  required 
+                  value={conclusionForm.emailSolicitante} 
+                  onChange={(e) => setConclusionForm({ ...conclusionForm, emailSolicitante: e.target.value })} 
+                  className="w-full border p-2.5 rounded-lg text-sm" 
+                  placeholder="solicitante@hospitalunimedcaruaru.com.br" 
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Considerações da Resolução / Parecer *</label>
+                <textarea 
+                  required 
+                  rows="4" 
+                  value={conclusionForm.consideracoes} 
+                  onChange={(e) => setConclusionForm({ ...conclusionForm, consideracoes: e.target.value })} 
+                  className="w-full border p-2.5 rounded-lg text-sm" 
+                  placeholder="Descreva o que foi corrigido, ajustado ou orientado para a finalização..."
+                ></textarea>
+              </div>
+
+              <div className="border border-dashed border-slate-300 p-4 rounded-xl bg-slate-50">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Anexo de Comprovação (Imagem, PDF ou Word — Max 1 MB)</label>
+                <input 
+                  type="file" 
+                  accept="image/png, image/jpeg, application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
+                  onChange={handleConclusionFileChange} 
+                  className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200 cursor-pointer" 
+                />
+                {conclusionFilePreview && (
+                  <p className="mt-2 text-xs text-emerald-700 font-semibold flex items-center gap-1">
+                    <Paperclip className="w-3.5 h-3.5" /> Arquivo selecionado: {conclusionFilePreview}
+                  </p>
+                )}
+              </div>
+
+              <div className="pt-3 flex items-center justify-between border-t">
+                <button
+                  type="button"
+                  onClick={() => triggerEmailNotification(conclusionForm.emailSolicitante, conclusionForm.consideracoes, conclusionItem)}
+                  className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-lg text-xs font-bold border border-blue-200 flex items-center gap-1.5 transition"
+                  title="Testar disparo do aviso por e-mail"
+                >
+                  <Mail className="w-3.5 h-3.5" /> Enviar Aviso
+                </button>
+
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setIsConclusionModalOpen(false)} className="px-4 py-2 border rounded-lg text-xs font-semibold text-slate-600">
+                    Cancelar
+                  </button>
+                  <button type="submit" className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow transition">
+                    Concluir Demanda
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PARA VISUALIZAR PARECER TÉCNICO DE DEMANDA CONCLUÍDA */}
+      {viewParecerModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">
+            <div className="px-6 py-4 bg-slate-900 text-white flex justify-between items-center">
+              <h3 className="font-bold text-sm flex items-center gap-2">
+                <FileText className="w-4 h-4 text-emerald-400" /> Parecer de Conclusão Salvo
+              </h3>
+              <button onClick={() => setViewParecerModal(null)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-sm text-slate-700">
+              <div className="bg-slate-50 p-3 rounded-lg border text-xs">
+                <div><strong>Solicitante:</strong> {viewParecerModal.emailSolicitante || viewParecerModal.usuario || '-'}</div>
+                <div><strong>Data de Conclusão:</strong> {formatDate(viewParecerModal.dataConclusao || viewParecerModal.createdAt)}</div>
+              </div>
+
+              <div>
+                <span className="font-bold block text-xs text-slate-500 uppercase tracking-wide mb-1">Considerações Registradas:</span>
+                <p className="bg-emerald-50/50 p-3 rounded-lg border border-emerald-200 text-slate-800 text-xs leading-relaxed">
+                  {viewParecerModal.consideracoesConclusao || 'Nenhuma consideração registrada.'}
+                </p>
+              </div>
+
+              {viewParecerModal.anexoConclusaoUrl && (
+                <div className="border border-slate-200 p-3 rounded-lg bg-slate-50 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-slate-700 truncate max-w-[200px]">{viewParecerModal.anexoConclusaoNome}</span>
+                  <button 
+                    onClick={() => handleOpenAnexo({ anexoUrl: viewParecerModal.anexoConclusaoUrl, anexoNome: viewParecerModal.anexoConclusaoNome, anexoTipo: viewParecerModal.anexoConclusaoTipo })} 
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold flex items-center gap-1 transition"
+                  >
+                    <Download className="w-3.5 h-3.5" /> Ver / Baixar
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 bg-slate-50 border-t flex justify-end">
+              <button onClick={() => setViewParecerModal(null)} className="px-4 py-2 border rounded-lg text-xs font-semibold text-slate-600">
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal para Visualizar Imagem do Anexo */}
       {viewAnexo && (
@@ -1250,8 +1501,19 @@ export default function App() {
                       <input required name="nomeUsuario" value={formData.nomeUsuario || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white" placeholder="Seu nome completo" />
                     </div>
                     <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">E-mail do Solicitante *</label>
+                      <input required type="email" name="emailSolicitante" value={formData.emailSolicitante || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white" placeholder="seu.email@hospitalunimedcaruaru.com.br" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">Setor *</label>
                       <input required name="setor" value={formData.setor || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white" placeholder="Ex: Faturamento, Recepção, TI" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Data de Abertura *</label>
+                      <input type="date" required name="data_abertura" value={formData.data_abertura || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white" />
                     </div>
                   </div>
 
@@ -1305,14 +1567,9 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Data de Abertura *</label>
-                    <input type="date" required name="data_abertura" value={formData.data_abertura || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white" />
-                  </div>
-
                   <div className="border border-dashed border-emerald-300 p-4 rounded-xl bg-emerald-50/50">
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Anexar Imagem (PNG/JPEG) ou Documento (PDF) (Max 700KB)</label>
-                    <input type="file" accept="image/png, image/jpeg, application/pdf" onChange={handleFileChange} className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200 cursor-pointer" />
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Anexar Imagem (PNG/JPEG), PDF ou Word (Max 1 MB)</label>
+                    <input type="file" accept="image/png, image/jpeg, application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={handleFileChange} className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200 cursor-pointer" />
                     {filePreview && (
                       <p className="mt-2 text-xs text-emerald-700 font-semibold flex items-center gap-1">
                         <Paperclip className="w-3.5 h-3.5" /> Arquivo selecionado: {filePreview}
@@ -1370,6 +1627,17 @@ export default function App() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">E-mail do Solicitante</label>
+                      <input type="email" name="emailSolicitante" value={formData.emailSolicitante || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="solicitante@hospitalunimedcaruaru.com.br" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Usuário Responsável *</label>
+                      <input required name="usuario" value={formData.usuario || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Seu nome" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">Empresa</label>
                       <input name="empresa" value={formData.empresa || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Ex: Hospital" />
                     </div>
@@ -1377,11 +1645,6 @@ export default function App() {
                       <label className="block text-xs font-semibold text-slate-700 mb-1">Convênio</label>
                       <input name="convenio" value={formData.convenio || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Ex: Unimed" />
                     </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Usuário Responsável *</label>
-                    <input required name="usuario" value={formData.usuario || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Seu nome" />
                   </div>
 
                   <div>
@@ -1418,6 +1681,16 @@ export default function App() {
                       <input type="datetime-local" required name="dtSolicitacao" value={formData.dtSolicitacao || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
                     </div>
                   </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">E-mail do Solicitante</label>
+                      <input type="email" name="emailSolicitante" value={formData.emailSolicitante || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="solicitante@hospitalunimedcaruaru.com.br" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Usuário Responsável</label>
+                      <input required name="usuario" value={formData.usuario || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="Seu nome" />
+                    </div>
+                  </div>
                   <div className="grid grid-cols-3 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Dt da Conta</label>
@@ -1431,10 +1704,6 @@ export default function App() {
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Convênio</label>
                       <input name="convenio" value={formData.convenio || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
                     </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">Usuário Responsável</label>
-                    <input required name="usuario" value={formData.usuario || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="Seu nome" />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 mb-1">Observações / Conclusão</label>
@@ -1472,6 +1741,16 @@ export default function App() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">E-mail do Solicitante</label>
+                      <input type="email" name="emailSolicitante" value={formData.emailSolicitante || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="solicitante@hospitalunimedcaruaru.com.br" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Usuário Responsável</label>
+                      <input required name="usuario" value={formData.usuario || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="Seu nome" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">TUSS</label>
                       <input name="tuss" value={formData.tuss || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
                     </div>
@@ -1491,17 +1770,13 @@ export default function App() {
                     </div>
                   </div>
                   <div className="border border-dashed border-blue-300 p-4 rounded-xl bg-blue-50/50">
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Anexar Imagem do Mat./Med. (Opcional - Max 700KB)</label>
-                    <input type="file" accept="image/png, image/jpeg, application/pdf" onChange={handleFileChange} className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-100 file:text-blue-800 hover:file:bg-blue-200 cursor-pointer" />
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Anexar Imagem do Mat./Med., PDF ou Word (Max 1 MB)</label>
+                    <input type="file" accept="image/png, image/jpeg, application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={handleFileChange} className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-100 file:text-blue-800 hover:file:bg-blue-200 cursor-pointer" />
                     {filePreview && (
                       <p className="mt-2 text-xs text-blue-700 font-semibold flex items-center gap-1">
                         <Paperclip className="w-3.5 h-3.5" /> Arquivo selecionado: {filePreview}
                       </p>
                     )}
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">Usuário Responsável</label>
-                    <input required name="usuario" value={formData.usuario || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="Seu nome" />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 mb-1">Observações / Conclusão</label>
