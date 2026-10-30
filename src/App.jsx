@@ -10,51 +10,51 @@ import {
   ArrowUpDown, ArrowUp, ArrowDown, FileText, MessageCircle
 } from 'lucide-react';
 
-// URL do Webhook do Google Chat (Cole aqui a URL se for utilizar integração direta com o Chat)
-const GOOGLE_CHAT_WEBHOOK_URL = "https://chat.googleapis.com/v1/spaces/AAQA2Rhg71I/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=bwdBx2HNJXP6qtP2L8Zg57BGfHrs5eD5WdLKhfCsOlw"; 
+// URL do Webhook do Google Chat (Cole aqui a URL gerada no Espaço do Google Chat)
+const GOOGLE_CHAT_WEBHOOK_URL = ""; 
 
 // 40 Chamados NTI higienizados para a carga inicial/biblioteca
 const CHAMADOS_NTI_INICIAIS = [
-  { codAtendimento: '', numChamado: '47862', data_abertura: '2025-11-25', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'As contas que foram colocadas em remessa somem da tela, e para encontrar a remessa precisamos procurar através de uma das contas que foram inseridas, para depois selecionar e conseguir entregar a remessa concluindo assim o processo', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '4297364', numChamado: '48162', data_abertura: '2025-11-27', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'atendimento 4297364 SADT que teve alta no dia 25/11/2025 às 11:17h, porém não consegui colocar na esteira, pois a conta não aparece', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '177287', numChamado: '48291', data_abertura: '2025-11-28', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Ao puxar as contas sem remessa na esteira unimed Recife apareceu uma conta 177287 que não está em remessa inforando que já foi gerado xml. Conferi no SAW a guia referente ao atendimento e realmente essa conta não foi postada. Por favor verificar porque ela aparece o status marcado com xml gerado', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed Recife', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '177213', numChamado: '48316', data_abertura: '2025-11-28', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Ocorreu um erro onde 4 contas que já estava em remessa e importada no SAW, a esteira ao puxar as contas pelo filtro sem remessa trouxe na informação e acabou atribuindo as mesmas em outra remessa. Contas: 177213, 177855, 178411, 177208.', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '48335', data_abertura: '2025-11-28', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'ao recalcular as contas está dobrando as diárias dentro da conta', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '48511', data_abertura: '2025-12-01', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Ao puxar as contas por data, percebemos que a esteira está colocando algumas contas fora do período selecionado, o que está ocasionando o não faturamento da conta na data correta, gerando dessa forma atraso no faturamento. Por favor ajustar.', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '177654', numChamado: '50226', data_abertura: '2025-12-10', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Opme não está aparecendo no easyaudit para as auditoras', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Tratativa: problemas operacionais (conta 177654)' },
-  { codAtendimento: '179644', numChamado: '50279', data_abertura: '2025-12-10', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'opme, divergencia na quantidade na fatura, no sistema mv.conta 179644', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '52041', data_abertura: '2025-12-31', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Ao selecionar status sincronizar, o filtro não traz todas as contas.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '4371189', numChamado: '52356', data_abertura: '2026-01-05', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Atendimento 4371189 conv 40, 30/12/2025 não aparece na esteira de conta, essa conta precisa passar na auditoria de enfermagem.', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Convênio 40', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '157472', numChamado: '52457', data_abertura: '2026-01-05', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'abrir a remessa 157472 conv.12 (deu erro para retirar as contas)', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Convênio 12', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '157989', numChamado: '53538', data_abertura: '2026-01-12', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Ao tentar enviar o arquivo 157989, o sistema informa o erro de integridade.', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '55258', data_abertura: '2026-01-26', emailSolicitante: 'dafne.luiza@hospitalunimedcaruaru.com.br', criticaErro: 'Erro ao gerar xml, na aba monitoração de faturamento. Usuário: Dafne.luiza', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'Dafne Luiza', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '55482', data_abertura: '2026-01-28', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Ao tentar gerar remessa no Easy Audit, está aparecendo um erro, e não aparece a remessa no sistema, só que no Mv a remessa foi gerada.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '55723', data_abertura: '2026-01-30', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'erro no status de sincronização easy', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '62177', data_abertura: '2026-03-16', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Divergências de valores no OPME, auditoria de enfermagem altera os materiais e não assume no Mv.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '64133', data_abertura: '2026-04-01', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Erro ao gerar o relatório para imprimir a conta e ao fechar a conta.', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '66550', data_abertura: '2026-04-15', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Erro ao gerar relatório 10470 no unireport.', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '70475', data_abertura: '2026-05-15', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'duplicidade na esteira de conta no Easy Audit.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '48050', data_abertura: '2025-11-20', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Remessas duplicando no Easy Audit', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '177661', numChamado: '48784', data_abertura: '2025-12-02', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Conta 177661 não assumiu a auditoria no mv', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
-  { codAtendimento: '', numChamado: '41194', data_abertura: '2025-10-03', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Quebra de parciais automático no sistema', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Configurações do sistema' },
-  { codAtendimento: '', numChamado: '43789', data_abertura: '2025-10-21', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Duplicidade de códigos de serviço no CEMUC', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'CEMUC', usuario: 'NTI Import', observacao: 'Configurações do sistema' },
-  { codAtendimento: '', numChamado: '43054', data_abertura: '2025-10-21', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Solicitação de Melhorias e Correções para a Ferramenta Easy Audit', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitações de melhoria' },
-  { codAtendimento: '', numChamado: '44031', data_abertura: '2025-10-23', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Restrição que impeça a utilização da mesma guia em dois atendimentos ambulatoriais distintos', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitações de melhoria' },
-  { codAtendimento: '', numChamado: '44378', data_abertura: '2025-10-28', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Importação de Códigos Laboratoriais (Unilab) para Conta Hospitalar', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unilab', usuario: 'NTI Import', observacao: 'Configurações do sistema' },
-  { codAtendimento: '', numChamado: '61632', data_abertura: '2026-03-01', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Limitação de cadastro de porte no SOUL MV', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
-  { codAtendimento: '', numChamado: '63948', data_abertura: '2026-03-30', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'realização de higienização da base de dados no sistema MV Hospitalar no cadastro do beneficiário', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
-  { codAtendimento: '', numChamado: '63958', data_abertura: '2026-03-30', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Atualização da tabela CASSI', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'CASSI', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
-  { codAtendimento: '', numChamado: '69617', data_abertura: '2026-05-08', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Solicitação de relatório para Jean', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
-  { codAtendimento: '', numChamado: '69690', data_abertura: '2026-05-08', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Solicitação de lógica para o relatório 12590', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Esclarecimento da lógica do relatório 12590' },
-  { codAtendimento: '', numChamado: '70291', data_abertura: '2026-05-13', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Insert tabelas 72 sulamerica', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'SulAmérica', usuario: 'NTI Import', observacao: 'Insert de atualização dos valores da TABELA 72 do sulamerica' },
-  { codAtendimento: '', numChamado: '70421', data_abertura: '2026-05-14', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Solicitação de ajuste no relatório - 10470', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Relatório 10470 - unireport não esta trazendo alguns atendimentos' },
-  { codAtendimento: '', numChamado: '70903', data_abertura: '2026-05-20', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Ajuste de todos os setores e origem para todos os usuários do faturamento', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Ajuste de setores/origens para acesso completo a contas' },
-  { codAtendimento: '', numChamado: '71048', data_abertura: '2026-05-21', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Extração de relatório via banco para identificar inconsistências cadastrais nas tabelas de faturamento (PROFAT sem TUSS)', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Mapeamento de PROFATs sem vinculo TUSS' },
-  { codAtendimento: '', numChamado: '71086', data_abertura: '2026-05-21', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Extração de dados via banco para mapeamento e parametrização de valores zerados ou ausentes', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Mapeamento de itens PROFAT sem preço/vigência' },
-  { codAtendimento: '', numChamado: '71420', data_abertura: '2026-05-25', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Dados como prescrição, evolução dos pacientes não aparece no PEP', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Inconsistência de exibição no PEP' },
-  { codAtendimento: '', numChamado: '74153', data_abertura: '2026-06-15', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Configuração do convênio 50 na empresa 5 mv - saw', sistema: 'SAW', status: 'Em Andamento', empresa: 'Empresa 5', convenio: 'Convênio 50', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
-  { codAtendimento: '', numChamado: '82.992', data_abertura: '2026-07-01', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Acréscimo de aba de observação de faturamento no Easy Audit', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitado via ClickUp' },
-  { codAtendimento: '', numChamado: '86.861', data_abertura: '2026-07-10', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Solicitação de Raspberry / Estação de Trabalho', sistema: 'Hardware', status: 'Aguardando TI', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitado via ClickUp' }
+  { codAtendimento: '', numChamado: '47862', data_abertura: '2025-11-25', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'As contas que foram colocadas em remessa somem da tela, e para encontrar a remessa precisamos procurar através de uma das contas que foram inseridas, para depois selecionar e conseguir entregar a remessa concluindo assim o processo', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '4297364', numChamado: '48162', data_abertura: '2025-11-27', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'atendimento 4297364 SADT que teve alta no dia 25/11/2025 às 11:17h, porém não consegui colocar na esteira, pois a conta não aparece', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '177287', numChamado: '48291', data_abertura: '2025-11-28', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Ao puxar as contas sem remessa na esteira unimed Recife apareceu uma conta 177287 que não está em remessa inforando que já foi gerado xml. Conferi no SAW a guia referente ao atendimento e realmente essa conta não foi postada. Por favor verificar porque ela aparece o status marcado com xml gerado', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed Recife', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '177213', numChamado: '48316', data_abertura: '2025-11-28', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Ocorreu um erro onde 4 contas que já estava em remessa e importada no SAW, a esteira ao puxar as contas pelo filtro sem remessa trouxe na informação e acabou atribuindo as mesmas em outra remessa. Contas: 177213, 177855, 178411, 177208.', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '48335', data_abertura: '2025-11-28', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'ao recalcular as contas está dobrando as diárias dentro da conta', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '48511', data_abertura: '2025-12-01', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Ao puxar as contas por data, percebemos que a esteira está colocando algumas contas fora do período selecionado, o que está ocasionando o não faturamento da conta na data correta, gerando dessa forma atraso no faturamento. Por favor ajustar.', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '177654', numChamado: '50226', data_abertura: '2025-12-10', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Opme não está aparecendo no easyaudit para as auditoras', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Tratativa: problemas operacionais (conta 177654)' },
+  { codAtendimento: '179644', numChamado: '50279', data_abertura: '2025-12-10', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'opme, divergencia na quantidade na fatura, no sistema mv.conta 179644', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '52041', data_abertura: '2025-12-31', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Ao selecionar status sincronizar, o filtro não traz todas as contas.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '4371189', numChamado: '52356', data_abertura: '2026-01-05', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Atendimento 4371189 conv 40, 30/12/2025 não aparece na esteira de conta, essa conta precisa passar na auditoria de enfermagem.', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Convênio 40', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '157472', numChamado: '52457', data_abertura: '2026-01-05', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'abrir a remessa 157472 conv.12 (deu erro para retirar as contas)', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Convênio 12', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '157989', numChamado: '53538', data_abertura: '2026-01-12', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Ao tentar enviar o arquivo 157989, o sistema informa o erro de integridade.', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '55258', data_abertura: '2026-01-26', nomeSolicitante: 'Dafne Luiza', emailSolicitante: 'dafne.luiza@hospitalunimedcaruaru.com.br', criticaErro: 'Erro ao gerar xml, na aba monitoração de faturamento. Usuário: Dafne.luiza', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'Dafne Luiza', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '55482', data_abertura: '2026-01-28', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Ao tentar gerar remessa no Easy Audit, está aparecendo um erro, e não aparece a remessa no sistema, só que no Mv a remessa foi gerada.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '55723', data_abertura: '2026-01-30', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'erro no status de sincronização easy', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '62177', data_abertura: '2026-03-16', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Divergências de valores no OPME, auditoria de enfermagem altera os materiais e não assume no Mv.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '64133', data_abertura: '2026-04-01', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Erro ao gerar o relatório para imprimir a conta e ao fechar a conta.', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '66550', data_abertura: '2026-04-15', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Erro ao gerar relatório 10470 no unireport.', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '70475', data_abertura: '2026-05-15', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'duplicidade na esteira de conta no Easy Audit.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '48050', data_abertura: '2025-11-20', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Remessas duplicando no Easy Audit', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '177661', numChamado: '48784', data_abertura: '2025-12-02', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Conta 177661 não assumiu a auditoria no mv', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '41194', data_abertura: '2025-10-03', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Quebra de parciais automático no sistema', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Configurações do sistema' },
+  { codAtendimento: '', numChamado: '43789', data_abertura: '2025-10-21', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Duplicidade de códigos de serviço no CEMUC', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'CEMUC', usuario: 'NTI Import', observacao: 'Configurações do sistema' },
+  { codAtendimento: '', numChamado: '43054', data_abertura: '2025-10-21', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Solicitação de Melhorias e Correções para a Ferramenta Easy Audit', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitações de melhoria' },
+  { codAtendimento: '', numChamado: '44031', data_abertura: '2025-10-23', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Restrição que impeça a utilização da mesma guia em dois atendimentos ambulatoriais distintos', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitações de melhoria' },
+  { codAtendimento: '', numChamado: '44378', data_abertura: '2025-10-28', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Importação de Códigos Laboratoriais (Unilab) para Conta Hospitalar', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unilab', usuario: 'NTI Import', observacao: 'Configurações do sistema' },
+  { codAtendimento: '', numChamado: '61632', data_abertura: '2026-03-01', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Limitação de cadastro de porte no SOUL MV', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
+  { codAtendimento: '', numChamado: '63948', data_abertura: '2026-03-30', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'realização de higienização da base de dados no sistema MV Hospitalar no cadastro do beneficiário', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
+  { codAtendimento: '', numChamado: '63958', data_abertura: '2026-03-30', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Atualização da tabela CASSI', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'CASSI', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
+  { codAtendimento: '', numChamado: '69617', data_abertura: '2026-05-08', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Solicitação de relatório para Jean', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
+  { codAtendimento: '', numChamado: '69690', data_abertura: '2026-05-08', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Solicitação de lógica para o relatório 12590', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Esclarecimento da lógica do relatório 12590' },
+  { codAtendimento: '', numChamado: '70291', data_abertura: '2026-05-13', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Insert tabelas 72 sulamerica', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'SulAmérica', usuario: 'NTI Import', observacao: 'Insert de atualização dos valores da TABELA 72 do sulamerica' },
+  { codAtendimento: '', numChamado: '70421', data_abertura: '2026-05-14', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Solicitação de ajuste no relatório - 10470', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Relatório 10470 - unireport não esta trazendo alguns atendimentos' },
+  { codAtendimento: '', numChamado: '70903', data_abertura: '2026-05-20', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Ajuste de todos os setores e origem para todos os usuários do faturamento', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Ajuste de setores/origens para acesso completo a contas' },
+  { codAtendimento: '', numChamado: '71048', data_abertura: '2026-05-21', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Extração de relatório via banco para identificar inconsistências cadastrais nas tabelas de faturamento (PROFAT sem TUSS)', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Mapeamento de PROFATs sem vinculo TUSS' },
+  { codAtendimento: '', numChamado: '71086', data_abertura: '2026-05-21', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Extração de dados via banco para mapeamento e parametrização de valores zerados ou ausentes', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Mapeamento de itens PROFAT sem preço/vigência' },
+  { codAtendimento: '', numChamado: '71420', data_abertura: '2026-05-25', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Dados como prescrição, evolução dos pacientes não aparece no PEP', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Inconsistência de exibição no PEP' },
+  { codAtendimento: '', numChamado: '74153', data_abertura: '2026-06-15', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Configuração do convênio 50 na empresa 5 mv - saw', sistema: 'SAW', status: 'Em Andamento', empresa: 'Empresa 5', convenio: 'Convênio 50', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
+  { codAtendimento: '', numChamado: '82.992', data_abertura: '2026-07-01', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Acréscimo de aba de observação de faturamento no Easy Audit', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitado via ClickUp' },
+  { codAtendimento: '', numChamado: '86.861', data_abertura: '2026-07-10', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Solicitação de Raspberry / Estação de Trabalho', sistema: 'Hardware', status: 'Aguardando TI', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitado via ClickUp' }
 ];
 
 export default function App() {
@@ -66,7 +66,14 @@ export default function App() {
   // Modal de Conclusão / Parecer Técnico
   const [isConclusionModalOpen, setIsConclusionModalOpen] = useState(false);
   const [conclusionItem, setConclusionItem] = useState(null);
-  const [conclusionForm, setConclusionForm] = useState({ consideracoes: '', anexoUrl: '', anexoNome: '', anexoTipo: '', emailSolicitante: '' });
+  const [conclusionForm, setConclusionForm] = useState({ 
+    consideracoes: '', 
+    anexoUrl: '', 
+    anexoNome: '', 
+    anexoTipo: '', 
+    nomeSolicitante: '',
+    emailSolicitante: '' 
+  });
   const [conclusionFilePreview, setConclusionFilePreview] = useState(null);
 
   // Modal para Visualizar Considerações/Parecer Salvo
@@ -313,9 +320,9 @@ export default function App() {
     const dataHojeIso = new Date().toISOString().substring(0, 10);
     if (activeTab === 'chamados') {
       const novoCodigoChamado = `CH-${Math.floor(100000 + Math.random() * 900000)}`;
-      setFormData({ codChamado: novoCodigoChamado, prioridade: 'Média', sistema: 'SoulMV', tipoChamado: 'Falha', status: 'Pendente', data_abertura: dataHojeIso, emailSolicitante: '' });
+      setFormData({ codChamado: novoCodigoChamado, prioridade: 'Média', sistema: 'SoulMV', tipoChamado: 'Falha', status: 'Pendente', data_abertura: dataHojeIso, nomeSolicitante: '', emailSolicitante: '' });
     } else {
-      setFormData({ status: 'Pendente', sistema: 'SoulMV', data_abertura: dataHojeIso, emailSolicitante: '' });
+      setFormData({ status: 'Pendente', sistema: 'SoulMV', data_abertura: dataHojeIso, nomeSolicitante: '', emailSolicitante: '' });
     }
     setIsModalOpen(true);
   };
@@ -335,6 +342,7 @@ export default function App() {
       anexoUrl: item.anexoConclusaoUrl || '',
       anexoNome: item.anexoConclusaoNome || '',
       anexoTipo: item.anexoConclusaoTipo || '',
+      nomeSolicitante: item.nomeSolicitante || item.nomeUsuario || item.usuario || '',
       emailSolicitante: item.emailSolicitante || ''
     });
     setConclusionFilePreview(item.anexoConclusaoNome || null);
@@ -342,14 +350,14 @@ export default function App() {
   };
 
   // Disparo de E-mail via GMAIL WEB DIRETO
-  const triggerGmailWeb = (email, consideracoesTexto, itemRef) => {
+  const triggerGmailWeb = (email, nome, consideracoesTexto, itemRef) => {
     if (!email) {
       alert("Por favor, preencha o e-mail do solicitante.");
       return;
     }
     const refCod = itemRef?.numChamado ? `NTI #${itemRef.numChamado}` : (itemRef?.codChamado || itemRef?.codAtendimento || 'Demandas');
     const emailSubject = `[Painel Faturamento] Solicitação Concluída (${refCod})`;
-    const emailBody = `Sua solicitação foi atendida com sucesso. Favor acessar o painel para confirmar a demanda concluída.\n\nConsiderações do Faturamento:\n${consideracoesTexto || 'Demanda analisada e finalizada pelo setor.'}`;
+    const emailBody = `Olá ${nome || 'Solicitante'},\n\nSua solicitação foi atendida com sucesso. Favor acessar o painel para confirmar a demanda concluída.\n\nConsiderações do Faturamento:\n${consideracoesTexto || 'Demanda analisada e finalizada pelo setor.'}`;
 
     // Link direto para a janela de composição do Gmail Web
     const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
@@ -357,16 +365,19 @@ export default function App() {
   };
 
   // Disparo para o Google Chat via Webhook
-  const sendGoogleChatNotification = async (itemRef, consideracoesTexto) => {
+  const sendGoogleChatNotification = async (itemRef, consideracoesTexto, nomeOverride, emailOverride) => {
     if (!GOOGLE_CHAT_WEBHOOK_URL) {
       alert("URL do Webhook do Google Chat não configurada no sistema. Para habilitar, insira a URL do seu espaço na linha 19 do arquivo.");
       return;
     }
 
     const refCod = itemRef?.numChamado ? `NTI #${itemRef.numChamado}` : (itemRef?.codChamado || itemRef?.codAtendimento || 'Demanda');
+    const nomeFinal = nomeOverride || itemRef?.nomeSolicitante || itemRef?.nomeUsuario || itemRef?.usuario || 'Não informado';
+    const emailFinal = emailOverride || itemRef?.emailSolicitante || '';
+
     const messageText = `🟢 *Sua solicitação foi atendida com sucesso!*\n\n` +
       `*Demanda:* ${refCod}\n` +
-      `*Solicitante:* ${itemRef?.emailSolicitante || itemRef?.usuario || 'Não informado'}\n` +
+      `*Solicitante:* ${nomeFinal}${emailFinal ? ` (${emailFinal})` : ''}\n` +
       `*Parecer Técnico:* ${consideracoesTexto || 'Concluído pelo setor de Faturamento.'}\n\n` +
       `_Favor acessar o painel para confirmar a demanda concluída._`;
 
@@ -395,6 +406,7 @@ export default function App() {
       anexoConclusaoUrl: conclusionForm.anexoUrl,
       anexoConclusaoNome: conclusionForm.anexoNome,
       anexoConclusaoTipo: conclusionForm.anexoTipo,
+      nomeSolicitante: conclusionForm.nomeSolicitante,
       emailSolicitante: conclusionForm.emailSolicitante,
       dataConclusao: dataConclusao
     };
@@ -411,7 +423,7 @@ export default function App() {
       // Oferece envio no Gmail Web
       if (conclusionForm.emailSolicitante) {
         if (window.confirm("Demanda concluída! Deseja abrir a janela de e-mail no Gmail agora para notificar o solicitante?")) {
-          triggerGmailWeb(conclusionForm.emailSolicitante, conclusionForm.consideracoes, conclusionItem);
+          triggerGmailWeb(conclusionForm.emailSolicitante, conclusionForm.nomeSolicitante, conclusionForm.consideracoes, conclusionItem);
         }
       }
     } catch (err) {
@@ -1148,7 +1160,7 @@ export default function App() {
                                   <div className="font-semibold text-slate-800 text-sm">{item.tituloChamado}</div>
                                 </td>
                                 <td className="p-4">
-                                  <div className="font-medium text-slate-800">{item.nomeUsuario}</div>
+                                  <div className="font-medium text-slate-800">{item.nomeSolicitante || item.nomeUsuario}</div>
                                   <div className="text-xs text-slate-500">{item.emailSolicitante || item.setor}</div>
                                 </td>
                                 <td className="p-4 whitespace-nowrap">
@@ -1359,16 +1371,30 @@ export default function App() {
                 <span className="font-mono text-xs">{conclusionItem?.numChamado ? `NTI #${conclusionItem.numChamado}` : (conclusionItem?.codChamado || conclusionItem?.criticaErro || 'Demanda')}</span>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">E-mail do Solicitante *</label>
-                <input 
-                  type="email" 
-                  required 
-                  value={conclusionForm.emailSolicitante} 
-                  onChange={(e) => setConclusionForm({ ...conclusionForm, emailSolicitante: e.target.value })} 
-                  className="w-full border p-2.5 rounded-lg text-sm" 
-                  placeholder="solicitante@hospitalunimedcaruaru.com.br" 
-                />
+              {/* Campos do Solicitante (Nome e E-mail em 2 colunas) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Nome do Solicitante *</label>
+                  <input 
+                    type="text" 
+                    required 
+                    value={conclusionForm.nomeSolicitante} 
+                    onChange={(e) => setConclusionForm({ ...conclusionForm, nomeSolicitante: e.target.value })} 
+                    className="w-full border p-2.5 rounded-lg text-sm bg-white" 
+                    placeholder="Ex: Vanessa Thaís" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">E-mail do Solicitante *</label>
+                  <input 
+                    type="email" 
+                    required 
+                    value={conclusionForm.emailSolicitante} 
+                    onChange={(e) => setConclusionForm({ ...conclusionForm, emailSolicitante: e.target.value })} 
+                    className="w-full border p-2.5 rounded-lg text-sm bg-white" 
+                    placeholder="solicitante@hospitalunimedcaruaru.com.br" 
+                  />
+                </div>
               </div>
 
               <div>
@@ -1404,7 +1430,7 @@ export default function App() {
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={() => triggerGmailWeb(conclusionForm.emailSolicitante, conclusionForm.consideracoes, conclusionItem)}
+                    onClick={() => triggerGmailWeb(conclusionForm.emailSolicitante, conclusionForm.nomeSolicitante, conclusionForm.consideracoes, conclusionItem)}
                     className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition shadow-sm"
                   >
                     <Mail className="w-3.5 h-3.5" /> Enviar via Gmail Web
@@ -1412,7 +1438,7 @@ export default function App() {
 
                   <button
                     type="button"
-                    onClick={() => sendGoogleChatNotification(conclusionItem, conclusionForm.consideracoes)}
+                    onClick={() => sendGoogleChatNotification(conclusionItem, conclusionForm.consideracoes, conclusionForm.nomeSolicitante, conclusionForm.emailSolicitante)}
                     className="px-3 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition shadow-sm"
                   >
                     <MessageCircle className="w-3.5 h-3.5 text-emerald-300" /> Enviar no Google Chat
@@ -1447,8 +1473,9 @@ export default function App() {
             </div>
 
             <div className="p-6 space-y-4 text-sm text-slate-700">
-              <div className="bg-slate-50 p-3 rounded-lg border text-xs">
-                <div><strong>Solicitante:</strong> {viewParecerModal.emailSolicitante || viewParecerModal.usuario || '-'}</div>
+              <div className="bg-slate-50 p-3 rounded-lg border text-xs space-y-1">
+                <div><strong>Solicitante:</strong> {viewParecerModal.nomeSolicitante || viewParecerModal.usuario || 'Não informado'}</div>
+                <div><strong>E-mail:</strong> {viewParecerModal.emailSolicitante || '-'}</div>
                 <div><strong>Data de Conclusão:</strong> {formatDate(viewParecerModal.dataConclusao || viewParecerModal.createdAt)}</div>
               </div>
 
@@ -1542,8 +1569,8 @@ export default function App() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Nome do Colaborador *</label>
-                      <input required name="nomeUsuario" value={formData.nomeUsuario || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white" placeholder="Seu nome completo" />
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Nome do Solicitante *</label>
+                      <input required name="nomeSolicitante" value={formData.nomeSolicitante || formData.nomeUsuario || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white" placeholder="Seu nome completo" />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">E-mail do Solicitante *</label>
@@ -1672,16 +1699,16 @@ export default function App() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Nome do Solicitante</label>
+                      <input name="nomeSolicitante" value={formData.nomeSolicitante || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Nome completo" />
+                    </div>
+                    <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">E-mail do Solicitante</label>
                       <input type="email" name="emailSolicitante" value={formData.emailSolicitante || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="solicitante@hospitalunimedcaruaru.com.br" />
                     </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Usuário Responsável *</label>
-                      <input required name="usuario" value={formData.usuario || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Seu nome" />
-                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">Empresa</label>
                       <input name="empresa" value={formData.empresa || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Ex: Hospital" />
@@ -1689,6 +1716,10 @@ export default function App() {
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">Convênio</label>
                       <input name="convenio" value={formData.convenio || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Ex: Unimed" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Usuário Responsável *</label>
+                      <input required name="usuario" value={formData.usuario || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Seu nome" />
                     </div>
                   </div>
 
@@ -1728,12 +1759,12 @@ export default function App() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1">E-mail do Solicitante</label>
-                      <input type="email" name="emailSolicitante" value={formData.emailSolicitante || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="solicitante@hospitalunimedcaruaru.com.br" />
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Nome do Solicitante</label>
+                      <input name="nomeSolicitante" value={formData.nomeSolicitante || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="Nome completo" />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1">Usuário Responsável</label>
-                      <input required name="usuario" value={formData.usuario || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="Seu nome" />
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">E-mail do Solicitante</label>
+                      <input type="email" name="emailSolicitante" value={formData.emailSolicitante || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="solicitante@hospitalunimedcaruaru.com.br" />
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-4">
@@ -1786,12 +1817,12 @@ export default function App() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1">E-mail do Solicitante</label>
-                      <input type="email" name="emailSolicitante" value={formData.emailSolicitante || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="solicitante@hospitalunimedcaruaru.com.br" />
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Nome do Solicitante</label>
+                      <input name="nomeSolicitante" value={formData.nomeSolicitante || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="Nome completo" />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1">Usuário Responsável</label>
-                      <input required name="usuario" value={formData.usuario || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="Seu nome" />
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">E-mail do Solicitante</label>
+                      <input type="email" name="emailSolicitante" value={formData.emailSolicitante || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="solicitante@hospitalunimedcaruaru.com.br" />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
