@@ -7,11 +7,21 @@ import {
   Home, Send, Filter, ArrowRight,
   Mail, Download, Image as ImageIcon, Bell, BellRing,
   BarChart3, Activity, CheckCircle, CheckSquare, Search, History,
-  ArrowUpDown, ArrowUp, ArrowDown, FileText, MessageCircle
+  ArrowUpDown, ArrowUp, ArrowDown, FileText, MessageCircle, ChevronDown
 } from 'lucide-react';
 
 // URL do Webhook do Google Chat (Cole aqui a URL gerada no Espaço do Google Chat)
-const GOOGLE_CHAT_WEBHOOK_URL = "https://chat.googleapis.com/v1/spaces/AAQA2Rhg71I/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=bwdBx2HNJXP6qtP2L8Zg57BGfHrs5eD5WdLKhfCsOlw"; 
+const GOOGLE_CHAT_WEBHOOK_URL = ""; 
+
+// Opções do Filtro Múltiplo de Status
+const STATUS_OPTIONS = [
+  { value: 'Pendente', label: '🟡 Pendente / Aberto' },
+  { value: 'Em Andamento', label: '🔵 Em Andamento' },
+  { value: 'Aguardando TI', label: '🟣 Aguardando TI' },
+  { value: 'Aguardando Retorno', label: '🟠 Aguardando Retorno' },
+  { value: 'Concluído', label: '🟢 Concluído' },
+  { value: 'Cancelado', label: '⚪ Cancelado' }
+];
 
 // 40 Chamados NTI higienizados para a carga inicial/biblioteca
 const CHAMADOS_NTI_INICIAIS = [
@@ -86,7 +96,7 @@ export default function App() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const previousTotalRef = useRef({});
 
-  // Controle de Histórico Dinâmico (Esconde concluídos/cancelados por padrão)
+  // Controle de Histórico Dinâmico
   const [showHistory, setShowHistory] = useState(false);
 
   // Paginação e Ordenação
@@ -102,8 +112,11 @@ export default function App() {
     chamados: { total: 0, pendente: 0, andamento: 0, concluido: 0, altaPrioridade: 0 }
   });
 
-  // Estados dos Filtros Avançados
-  const [filterStatus, setFilterStatus] = useState('Todos');
+  // Estados dos Filtros Avançados (filterStatus como Array para Múltipla Escolha)
+  const [filterStatus, setFilterStatus] = useState([]);
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
+  const statusDropdownRef = useRef(null);
+
   const [filterProfat, setFilterProfat] = useState('');
   const [filterSistema, setFilterSistema] = useState('Todos');
   const [filterChamado, setFilterChamado] = useState('');
@@ -117,6 +130,17 @@ export default function App() {
   // Form Feedback State
   const [feedback, setFeedback] = useState({ nome: '', email: '', tipo: 'Sugestão de Melhoria', mensagem: '' });
   const [feedbackEnviado, setFeedbackEnviado] = useState(false);
+
+  // Fechar o dropdown de status ao clicar fora dele
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target)) {
+        setIsStatusDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Reseta a página para 1 ao mudar de aba ou alterar filtros
   useEffect(() => {
@@ -236,6 +260,15 @@ export default function App() {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Alterna opções no filtro múltiplo de status
+  const toggleStatusFilter = (statusValue) => {
+    setFilterStatus(prev => 
+      prev.includes(statusValue) 
+        ? prev.filter(s => s !== statusValue)
+        : [...prev, statusValue]
+    );
   };
 
   // Upload no Formulário Principal (Max 1MB)
@@ -359,7 +392,6 @@ export default function App() {
     const emailSubject = `[Painel Faturamento] Solicitação Concluída (${refCod})`;
     const emailBody = `Olá ${nome || 'Solicitante'},\n\nSua solicitação foi atendida com sucesso. Favor acessar o painel para confirmar a demanda concluída.\n\nConsiderações do Faturamento:\n${consideracoesTexto || 'Demanda analisada e finalizada pelo setor.'}`;
 
-    // Link direto para a janela de composição do Gmail Web
     const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
     window.open(gmailUrl, '_blank');
   };
@@ -420,7 +452,6 @@ export default function App() {
 
       setIsConclusionModalOpen(false);
 
-      // Oferece envio no Gmail Web
       if (conclusionForm.emailSolicitante) {
         if (window.confirm("Demanda concluída! Deseja abrir a janela de e-mail no Gmail agora para notificar o solicitante?")) {
           triggerGmailWeb(conclusionForm.emailSolicitante, conclusionForm.nomeSolicitante, conclusionForm.consideracoes, conclusionItem);
@@ -559,18 +590,22 @@ export default function App() {
     );
   };
 
-  // 1. Filtragem Inicial dos Registros
+  // 1. Filtragem Inicial dos Registros com Suporte a Filtro Múltiplo de Status
   const filteredItems = items.filter((item) => {
     const currentStatus = item.status || 'Pendente';
     const isSearching = filterProfat.trim() !== '' || filterChamado.trim() !== '' || filterDateStart !== '' || filterDateEnd !== '';
 
-    if (!showHistory && !isSearching && filterStatus === 'Todos') {
+    // Se nenhum status foi explicitamente marcado e o usuário não está buscando, oculta concluídos/cancelados a menos que showHistory seja true
+    if (!showHistory && !isSearching && filterStatus.length === 0) {
       if (currentStatus === 'Concluído' || currentStatus === 'Cancelado') {
         return false;
       }
     }
 
-    if (filterStatus !== 'Todos' && currentStatus !== filterStatus) return false;
+    // Se houver status selecionados no filtro múltiplo, verifica se o item bate com a lista
+    if (filterStatus.length > 0 && !filterStatus.includes(currentStatus)) {
+      return false;
+    }
 
     if (filterProfat.trim() !== '') {
       const queryStr = filterProfat.toLowerCase();
@@ -619,7 +654,7 @@ export default function App() {
   const paginatedItems = sortedItems.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const clearFilters = () => {
-    setFilterStatus('Todos');
+    setFilterStatus([]);
     setFilterProfat('');
     setFilterSistema('Todos');
     setFilterChamado('');
@@ -1010,17 +1045,57 @@ export default function App() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-1">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">Status</label>
-                    <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="w-full border p-2 rounded-lg text-sm bg-white">
-                      <option value="Todos">Todos (Ativos no Dia a Dia)</option>
-                      <option value="Pendente">1. Pendente / Aberto</option>
-                      <option value="Em Andamento">2. Em Andamento</option>
-                      <option value="Aguardando TI">3. Aguardando TI</option>
-                      <option value="Aguardando Retorno">4. Aguardando Retorno do Usuário</option>
-                      <option value="Concluído">5. Concluído (Histórico)</option>
-                      <option value="Cancelado">6. Cancelado (Histórico)</option>
-                    </select>
+                  
+                  {/* DROPDOWN MÚLTIPLO DE STATUS */}
+                  <div className="relative" ref={statusDropdownRef}>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">
+                      Status {filterStatus.length > 0 && `(${filterStatus.length} selecionados)`}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
+                      className="w-full border p-2 rounded-lg text-sm bg-white flex items-center justify-between text-slate-700 hover:border-emerald-500 transition shadow-sm"
+                    >
+                      <span className="truncate text-xs font-medium">
+                        {filterStatus.length === 0 
+                          ? 'Todos os Status Ativos' 
+                          : `${filterStatus.length} selecionado(s)`}
+                      </span>
+                      <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                    </button>
+
+                    {isStatusDropdownOpen && (
+                      <div className="absolute z-30 mt-1 w-64 bg-white border border-slate-200 rounded-xl shadow-xl p-3 space-y-2 text-xs">
+                        <div className="flex justify-between items-center border-b pb-2 font-semibold text-slate-700">
+                          <span>Filtrar por Status:</span>
+                          {filterStatus.length > 0 && (
+                            <button 
+                              type="button" 
+                              onClick={() => setFilterStatus([])} 
+                              className="text-emerald-700 hover:underline text-[11px] font-bold"
+                            >
+                              Limpar Seleção
+                            </button>
+                          )}
+                        </div>
+                        <div className="space-y-1.5 max-h-56 overflow-y-auto">
+                          {STATUS_OPTIONS.map((opt) => (
+                            <label 
+                              key={opt.value} 
+                              className="flex items-center gap-2 p-1.5 hover:bg-slate-50 rounded-lg cursor-pointer text-slate-700 font-medium select-none"
+                            >
+                              <input 
+                                type="checkbox" 
+                                checked={filterStatus.includes(opt.value)} 
+                                onChange={() => toggleStatusFilter(opt.value)}
+                                className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                              />
+                              <span>{opt.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {activeTab === 'chamados' ? (
@@ -1118,7 +1193,7 @@ export default function App() {
                     {paginatedItems.length === 0 ? (
                       <tr>
                         <td colSpan="11" className="p-8 text-center text-slate-400">
-                          Nenhum registro ativo encontrado. {showHistory ? '' : 'Ative "Exibir Concluídos" para pesquisar no histórico.'}
+                          Nenhum registro encontrado para os filtros selecionados.
                         </td>
                       </tr>
                     ) : (
@@ -1275,7 +1350,6 @@ export default function App() {
                             <td className="p-4 text-center whitespace-nowrap">
                               <div className="flex items-center justify-center gap-2">
                                 
-                                {/* Botão Dedicado "Concluir Demanda" */}
                                 {item.status !== 'Concluído' ? (
                                   <button
                                     onClick={() => handleOpenConclusionModal(item)}
@@ -1371,7 +1445,6 @@ export default function App() {
                 <span className="font-mono text-xs">{conclusionItem?.numChamado ? `NTI #${conclusionItem.numChamado}` : (conclusionItem?.codChamado || conclusionItem?.criticaErro || 'Demanda')}</span>
               </div>
 
-              {/* Campos do Solicitante (Nome e E-mail em 2 colunas) */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Nome do Solicitante *</label>
@@ -1424,7 +1497,6 @@ export default function App() {
                 )}
               </div>
 
-              {/* Botões de Disparo de Avisos (Gmail Web e Google Chat) */}
               <div className="p-3 bg-slate-100 rounded-xl space-y-2 border">
                 <span className="text-xs font-bold text-slate-700 block">Enviar Notificação de Conclusão:</span>
                 <div className="flex flex-wrap gap-2">
