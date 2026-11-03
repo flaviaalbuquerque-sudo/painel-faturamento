@@ -23,7 +23,7 @@ const STATUS_OPTIONS = [
   { value: 'Cancelado', label: '⚪ Cancelado' }
 ];
 
-// 40 Chamados NTI higienizados para a carga inicial/biblioteca
+// 40 Chamados NTI higienizados preservados na base local
 const CHAMADOS_NTI_INICIAIS = [
   { codAtendimento: '', numChamado: '47862', data_abertura: '2025-11-25', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'As contas que foram colocadas em remessa somem da tela, e para encontrar a remessa precisamos procurar através de uma das contas que foram inseridas, para depois selecionar e conseguir entregar a remessa concluindo assim o processo', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
   { codAtendimento: '4297364', numChamado: '48162', data_abertura: '2025-11-27', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'atendimento 4297364 SADT que teve alta no dia 25/11/2025 às 11:17h, porém não consegui colocar na esteira, pois a conta não aparece', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
@@ -112,7 +112,7 @@ export default function App() {
     chamados: { total: 0, pendente: 0, andamento: 0, concluido: 0, altaPrioridade: 0 }
   });
 
-  // Estados dos Filtros Avançados (filterStatus como Array para Múltipla Escolha)
+  // Estados dos Filtros Avançados
   const [filterStatus, setFilterStatus] = useState([]);
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const statusDropdownRef = useRef(null);
@@ -155,8 +155,15 @@ export default function App() {
       return onSnapshot(q, (snapshot) => {
         let docs = snapshot.docs.map(doc => doc.data());
         
-        if (colName === 'criticas' && docs.length === 0) {
-          docs = CHAMADOS_NTI_INICIAIS;
+        if (colName === 'criticas') {
+          const importadosFormatados = CHAMADOS_NTI_INICIAIS.map((c, idx) => ({
+            id: `nti-${idx}`,
+            ...c,
+            createdAt: c.data_abertura ? `${c.data_abertura}T00:00:00.000Z` : new Date().toISOString()
+          }));
+          const firebaseNumChamados = new Set(docs.map(d => d.numChamado).filter(Boolean));
+          const importadosFiltrados = importadosFormatados.filter(i => !firebaseNumChamados.has(i.numChamado));
+          docs = [...docs, ...importadosFiltrados];
         }
 
         const total = docs.length;
@@ -204,7 +211,7 @@ export default function App() {
     return () => unsubscribes.forEach(unsub => unsub());
   }, []);
 
-  // Listener para a Tabela Ativa
+  // Listener para a Tabela Ativa (Com fusão garantida dos 40 chamados)
   useEffect(() => {
     if (activeTab === 'inicio') return;
 
@@ -212,13 +219,17 @@ export default function App() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       
-      if (activeTab === 'criticas' && data.length === 0) {
+      if (activeTab === 'criticas') {
         const importadosFormatados = CHAMADOS_NTI_INICIAIS.map((c, idx) => ({
           id: `nti-${idx}`,
           ...c,
           createdAt: c.data_abertura ? `${c.data_abertura}T00:00:00.000Z` : new Date().toISOString()
         }));
-        setItems(importadosFormatados);
+
+        const firebaseNumChamados = new Set(data.map(d => d.numChamado).filter(Boolean));
+        const importadosFiltrados = importadosFormatados.filter(i => !firebaseNumChamados.has(i.numChamado));
+        
+        setItems([...data, ...importadosFiltrados]);
       } else {
         setItems(data);
       }
@@ -262,7 +273,6 @@ export default function App() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Alterna opções no filtro múltiplo de status
   const toggleStatusFilter = (statusValue) => {
     setFilterStatus(prev => 
       prev.includes(statusValue) 
@@ -271,7 +281,6 @@ export default function App() {
     );
   };
 
-  // Upload no Formulário Principal (Max 1MB)
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -294,7 +303,6 @@ export default function App() {
     }
   };
 
-  // Upload na Janela de Conclusão (Max 1MB)
   const handleConclusionFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -367,7 +375,6 @@ export default function App() {
     setIsModalOpen(true);
   };
 
-  // Abertura do Modal Dedicado "Concluir Demanda"
   const handleOpenConclusionModal = (item) => {
     setConclusionItem(item);
     setConclusionForm({
@@ -382,7 +389,6 @@ export default function App() {
     setIsConclusionModalOpen(true);
   };
 
-  // Disparo de E-mail via GMAIL WEB DIRETO
   const triggerGmailWeb = (email, nome, consideracoesTexto, itemRef) => {
     if (!email) {
       alert("Por favor, preencha o e-mail do solicitante.");
@@ -396,7 +402,6 @@ export default function App() {
     window.open(gmailUrl, '_blank');
   };
 
-  // Disparo para o Google Chat via Webhook
   const sendGoogleChatNotification = async (itemRef, consideracoesTexto, nomeOverride, emailOverride) => {
     if (!GOOGLE_CHAT_WEBHOOK_URL) {
       alert("URL do Webhook do Google Chat não configurada no sistema. Para habilitar, insira a URL do seu espaço na linha 19 do arquivo.");
@@ -426,7 +431,6 @@ export default function App() {
     }
   };
 
-  // Submissão da Conclusão da Demanda
   const handleSaveConclusion = async (e) => {
     e.preventDefault();
     if (!conclusionItem) return;
@@ -548,7 +552,6 @@ export default function App() {
     return { label: 'Dentro do SLA', color: 'bg-emerald-100 text-emerald-800 border-emerald-300' };
   };
 
-  // Formatação de data visual BR (DD/MM/YYYY)
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
     try {
@@ -560,7 +563,6 @@ export default function App() {
     }
   };
 
-  // Lógica de Alternância de Ordenação por Coluna
   const handleSort = (key) => {
     let direction = 'asc';
     if (sortConfig.key === key && sortConfig.direction === 'asc') {
@@ -569,7 +571,6 @@ export default function App() {
     setSortConfig({ key, direction });
   };
 
-  // Componente de Cabeçalho com Indicador de Ordenação
   const SortableHeader = ({ label, sortKey, className = "" }) => {
     const isSorted = sortConfig.key === sortKey;
     return (
@@ -590,19 +591,17 @@ export default function App() {
     );
   };
 
-  // 1. Filtragem Inicial dos Registros com Suporte a Filtro Múltiplo de Status
+  // Filtragem dos Registros
   const filteredItems = items.filter((item) => {
     const currentStatus = item.status || 'Pendente';
     const isSearching = filterProfat.trim() !== '' || filterChamado.trim() !== '' || filterDateStart !== '' || filterDateEnd !== '';
 
-    // Se nenhum status foi explicitamente marcado e o usuário não está buscando, oculta concluídos/cancelados a menos que showHistory seja true
     if (!showHistory && !isSearching && filterStatus.length === 0) {
       if (currentStatus === 'Concluído' || currentStatus === 'Cancelado') {
         return false;
       }
     }
 
-    // Se houver status selecionados no filtro múltiplo, verifica se o item bate com a lista
     if (filterStatus.length > 0 && !filterStatus.includes(currentStatus)) {
       return false;
     }
@@ -631,7 +630,6 @@ export default function App() {
     return true;
   });
 
-  // 2. Ordenação Dinâmica por Coluna
   const sortedItems = [...filteredItems].sort((a, b) => {
     let aVal = a[sortConfig.key] || '';
     let bVal = b[sortConfig.key] || '';
@@ -649,7 +647,6 @@ export default function App() {
     return 0;
   });
 
-  // 3. Paginação (Limites de 10 por página)
   const totalPages = Math.ceil(sortedItems.length / itemsPerPage) || 1;
   const paginatedItems = sortedItems.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
@@ -1136,7 +1133,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Tabela de Dados com Rolagem Horizontal Otimizada */}
+              {/* Tabela de Dados */}
               <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
                 <table className="w-full text-left text-sm text-slate-600 min-w-[1450px]">
                   <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500 font-semibold">
@@ -1390,7 +1387,7 @@ export default function App() {
                   </tbody>
                 </table>
 
-                {/* Barra de Paginação (Limite de 10 linhas) */}
+                {/* Barra de Paginação */}
                 {sortedItems.length > 0 && (
                   <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
                     <div>
