@@ -1,1611 +1,1529 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import {
-  LayoutDashboard, Calendar as CalendarIcon, CheckSquare,
-  FileText, BarChart2, Plus, Search, Sun, Moon, Mail,
-  X, Trash2, Video, Clock, ChevronLeft, ChevronRight,
-  Paperclip, Upload, Image as ImageIcon, File as FileIcon,
-  Download, Pencil, StickyNote, Check, ExternalLink, AlertCircle
+import React, { useState, useEffect, useRef } from 'react';
+import { db } from './firebase';
+import { collection, addDoc, onSnapshot, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
+import { 
+  AlertTriangle, Clock, PlusCircle, ShieldAlert, 
+  FileCode, ChevronRight, X, Edit3, Trash2, MessageSquare, Paperclip,
+  Home, Send, Filter, ArrowRight,
+  Mail, Download, Image as ImageIcon, Bell, BellRing,
+  BarChart3, Activity, CheckCircle, CheckSquare, Search, History,
+  ArrowUpDown, ArrowUp, ArrowDown, FileText, MessageCircle, ChevronDown
 } from 'lucide-react';
 
-/* =========================================================================
-   CONSTANTES
-   ========================================================================= */
+// URL do Webhook do Google Chat (Cole aqui a URL gerada no Espaço do Google Chat)
+const GOOGLE_CHAT_WEBHOOK_URL = ""; 
 
-const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-const SISTEMAS = ['SoulMV', 'SAW', 'EasyAudit'];
-
-// Anexos das notas de sistema
-const EXTENSOES_ACEITAS = ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'];
-const ACCEPT_INPUT = '.jpg,.jpeg,.png,.pdf,.doc,.docx';
-const TAMANHO_MAX_MB = 10;
-
-const TAREFAS_INICIAIS = [
-  { id: '1', title: 'Revisão SoulMV', category: 'Trabalho', priority: 'Alta', status: 'Pendente', date: '2026-11-05' },
-  { id: '2', title: 'Consulta Médica', category: 'Saúde', priority: 'Média', status: 'Pendente', date: '2026-11-10' }
+// Opções do Filtro Múltiplo de Status
+const STATUS_OPTIONS = [
+  { value: 'Pendente', label: '🟡 Pendente / Aberto' },
+  { value: 'Em Andamento', label: '🔵 Em Andamento' },
+  { value: 'Aguardando TI', label: '🟣 Aguardando TI' },
+  { value: 'Aguardando Retorno', label: '🟠 Aguardando Retorno' },
+  { value: 'Concluído', label: '🟢 Concluído' },
+  { value: 'Cancelado', label: '⚪ Cancelado' }
 ];
 
-const NOTAS_INICIAIS = [
-  {
-    id: '1',
-    system: 'SoulMV',
-    title: 'Caminho de Salvamento de Imagens',
-    path: '\\\\servidor\\soulmv\\anexos\\laudos',
-    content: 'Configuração do módulo de faturamento. Verificar permissões da pasta de rede antes de alterar.',
-    actionsTaken: '',
-    attachments: [],
-    date: '2026-11-01'
-  },
-  {
-    id: '2',
-    system: 'SAW',
-    title: 'Tela de Parâmetros de Auditoria',
-    path: 'Configurações > Auditoria > Tabela de Prazos',
-    content: 'Tela pouco utilizada. Acessar apenas no início do mês para atualizar regras de glosa.',
-    actionsTaken: '',
-    attachments: [],
-    date: '2026-11-02'
-  }
+// 40 Chamados NTI higienizados para a carga inicial/biblioteca
+const CHAMADOS_NTI_INICIAIS = [
+  { codAtendimento: '', numChamado: '47862', data_abertura: '2025-11-25', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'As contas que foram colocadas em remessa somem da tela, e para encontrar a remessa precisamos procurar através de uma das contas que foram inseridas, para depois selecionar e conseguir entregar a remessa concluindo assim o processo', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '4297364', numChamado: '48162', data_abertura: '2025-11-27', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'atendimento 4297364 SADT que teve alta no dia 25/11/2025 às 11:17h, porém não consegui colocar na esteira, pois a conta não aparece', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '177287', numChamado: '48291', data_abertura: '2025-11-28', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Ao puxar as contas sem remessa na esteira unimed Recife apareceu uma conta 177287 que não está em remessa inforando que já foi gerado xml. Conferi no SAW a guia referente ao atendimento e realmente essa conta não foi postada. Por favor verificar porque ela aparece o status marcado com xml gerado', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed Recife', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '177213', numChamado: '48316', data_abertura: '2025-11-28', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Ocorreu um erro onde 4 contas que já estava em remessa e importada no SAW, a esteira ao puxar as contas pelo filtro sem remessa trouxe na informação e acabou atribuindo as mesmas em outra remessa. Contas: 177213, 177855, 178411, 177208.', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unimed', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '48335', data_abertura: '2025-11-28', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'ao recalcular as contas está dobrando as diárias dentro da conta', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '48511', data_abertura: '2025-12-01', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Ao puxar as contas por data, percebemos que a esteira está colocando algumas contas fora do período selecionado, o que está ocasionando o não faturamento da conta na data correta, gerando dessa forma atraso no faturamento. Por favor ajustar.', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '177654', numChamado: '50226', data_abertura: '2025-12-10', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Opme não está aparecendo no easyaudit para as auditoras', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Tratativa: problemas operacionais (conta 177654)' },
+  { codAtendimento: '179644', numChamado: '50279', data_abertura: '2025-12-10', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'opme, divergencia na quantidade na fatura, no sistema mv.conta 179644', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '52041', data_abertura: '2025-12-31', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Ao selecionar status sincronizar, o filtro não traz todas as contas.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '4371189', numChamado: '52356', data_abertura: '2026-01-05', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Atendimento 4371189 conv 40, 30/12/2025 não aparece na esteira de conta, essa conta precisa passar na auditoria de enfermagem.', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Convênio 40', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '157472', numChamado: '52457', data_abertura: '2026-01-05', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'abrir a remessa 157472 conv.12 (deu erro para retirar as contas)', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Convênio 12', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '157989', numChamado: '53538', data_abertura: '2026-01-12', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Ao tentar enviar o arquivo 157989, o sistema informa o erro de integridade.', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '55258', data_abertura: '2026-01-26', nomeSolicitante: 'Dafne Luiza', emailSolicitante: 'dafne.luiza@hospitalunimedcaruaru.com.br', criticaErro: 'Erro ao gerar xml, na aba monitoração de faturamento. Usuário: Dafne.luiza', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'Dafne Luiza', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '55482', data_abertura: '2026-01-28', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Ao tentar gerar remessa no Easy Audit, está aparecendo um erro, e não aparece a remessa no sistema, só que no Mv a remessa foi gerada.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '55723', data_abertura: '2026-01-30', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'erro no status de sincronização easy', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '62177', data_abertura: '2026-03-16', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Divergências de valores no OPME, auditoria de enfermagem altera os materiais e não assume no Mv.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '64133', data_abertura: '2026-04-01', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Erro ao gerar o relatório para imprimir a conta e ao fechar a conta.', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '66550', data_abertura: '2026-04-15', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Erro ao gerar relatório 10470 no unireport.', sistema: 'SoulMV', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '70475', data_abertura: '2026-05-15', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'duplicidade na esteira de conta no Easy Audit.', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '48050', data_abertura: '2025-11-20', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Remessas duplicando no Easy Audit', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '177661', numChamado: '48784', data_abertura: '2025-12-02', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Conta 177661 não assumiu a auditoria no mv', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha OPERACIONAL' },
+  { codAtendimento: '', numChamado: '41194', data_abertura: '2025-10-03', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Quebra de parciais automático no sistema', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Configurações do sistema' },
+  { codAtendimento: '', numChamado: '43789', data_abertura: '2025-10-21', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Duplicidade de códigos de serviço no CEMUC', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'CEMUC', usuario: 'NTI Import', observacao: 'Configurações do sistema' },
+  { codAtendimento: '', numChamado: '43054', data_abertura: '2025-10-21', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Solicitação de Melhorias e Correções para a Ferramenta Easy Audit', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitações de melhoria' },
+  { codAtendimento: '', numChamado: '44031', data_abertura: '2025-10-23', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Restrição que impeça a utilização da mesma guia em dois atendimentos ambulatoriais distintos', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitações de melhoria' },
+  { codAtendimento: '', numChamado: '44378', data_abertura: '2025-10-28', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Importação de Códigos Laboratoriais (Unilab) para Conta Hospitalar', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Unilab', usuario: 'NTI Import', observacao: 'Configurações do sistema' },
+  { codAtendimento: '', numChamado: '61632', data_abertura: '2026-03-01', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Limitação de cadastro de porte no SOUL MV', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
+  { codAtendimento: '', numChamado: '63948', data_abertura: '2026-03-30', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'realização de higienização da base de dados no sistema MV Hospitalar no cadastro do beneficiário', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
+  { codAtendimento: '', numChamado: '63958', data_abertura: '2026-03-30', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Atualização da tabela CASSI', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'CASSI', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
+  { codAtendimento: '', numChamado: '69617', data_abertura: '2026-05-08', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Solicitação de relatório para Jean', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
+  { codAtendimento: '', numChamado: '69690', data_abertura: '2026-05-08', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Solicitação de lógica para o relatório 12590', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Esclarecimento da lógica do relatório 12590' },
+  { codAtendimento: '', numChamado: '70291', data_abertura: '2026-05-13', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Insert tabelas 72 sulamerica', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'SulAmérica', usuario: 'NTI Import', observacao: 'Insert de atualização dos valores da TABELA 72 do sulamerica' },
+  { codAtendimento: '', numChamado: '70421', data_abertura: '2026-05-14', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Solicitação de ajuste no relatório - 10470', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Relatório 10470 - unireport não esta trazendo alguns atendimentos' },
+  { codAtendimento: '', numChamado: '70903', data_abertura: '2026-05-20', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Ajuste de todos os setores e origem para todos os usuários do faturamento', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Ajuste de setores/origens para acesso completo a contas' },
+  { codAtendimento: '', numChamado: '71048', data_abertura: '2026-05-21', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Extração de relatório via banco para identificar inconsistências cadastrais nas tabelas de faturamento (PROFAT sem TUSS)', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Mapeamento de PROFATs sem vinculo TUSS' },
+  { codAtendimento: '', numChamado: '71086', data_abertura: '2026-05-21', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Extração de dados via banco para mapeamento e parametrização de valores zerados ou ausentes', sistema: 'Easy Audit', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Mapeamento de itens PROFAT sem preço/vigência' },
+  { codAtendimento: '', numChamado: '71420', data_abertura: '2026-05-25', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Dados como prescrição, evolução dos pacientes não aparece no PEP', sistema: 'SoulMV', status: 'Em Andamento', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Inconsistência de exibição no PEP' },
+  { codAtendimento: '', numChamado: '74153', data_abertura: '2026-06-15', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Configuração do convênio 50 na empresa 5 mv - saw', sistema: 'SAW', status: 'Em Andamento', empresa: 'Empresa 5', convenio: 'Convênio 50', usuario: 'NTI Import', observacao: 'Origem: Planilha GESTÃO' },
+  { codAtendimento: '', numChamado: '82.992', data_abertura: '2026-07-01', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Acréscimo de aba de observação de faturamento no Easy Audit', sistema: 'Easy Audit', status: 'Pendente', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitado via ClickUp' },
+  { codAtendimento: '', numChamado: '86.861', data_abertura: '2026-07-10', nomeSolicitante: 'Faturamento', emailSolicitante: 'faturamento@hospitalunimedcaruaru.com.br', criticaErro: 'Solicitação de Raspberry / Estação de Trabalho', sistema: 'Hardware', status: 'Aguardando TI', empresa: 'Hospital', convenio: 'Geral', usuario: 'NTI Import', observacao: 'Solicitado via ClickUp' }
 ];
-
-const PROJETOS_INICIAIS = [
-  { id: 'p1', title: 'Implantação Módulo EasyAudit', system: 'EasyAudit', status: 'Pendente', progress: 20 },
-  { id: 'p2', title: 'Homologação SAW v4', system: 'SAW', status: 'Em Andamento', progress: 65 },
-  { id: 'p3', title: 'Migração de Servidor SoulMV', system: 'SoulMV', status: 'Concluído', progress: 100 }
-];
-
-/* =========================================================================
-   TEMAS (escuro / claro)
-   ========================================================================= */
-
-const TEMAS = {
-  escuro: {
-    app: 'bg-slate-950 text-slate-100',
-    header: 'border-slate-800 bg-slate-900/80',
-    card: 'bg-slate-900 border-slate-800',
-    sub: 'bg-slate-950/50 border-slate-800',
-    subHover: 'hover:border-slate-700',
-    inner: 'bg-slate-900 border-slate-800',
-    input: 'bg-slate-950 border-slate-700 text-white placeholder-slate-500 [color-scheme:dark]',
-    muted: 'text-slate-400',
-    faint: 'text-slate-500',
-    body: 'text-slate-300',
-    strong: 'text-white',
-    accent: 'text-lime-400',
-    chip: 'bg-slate-800 text-slate-300',
-    tabs: 'bg-slate-800/50 border-slate-700/50',
-    tabOff: 'text-slate-300 hover:text-white',
-    btnSec: 'bg-slate-800 text-slate-200 hover:bg-slate-700',
-    iconBtn: 'border-slate-700 hover:bg-slate-800',
-    cell: 'border-slate-800 bg-slate-950/60 hover:bg-slate-800/40',
-    cellPad: 'bg-slate-950/20',
-    dayNum: 'text-slate-300',
-    dayHover: 'hover:bg-slate-700/60',
-    divider: 'border-slate-800',
-    track: 'bg-slate-800',
-    drop: 'border-slate-700 hover:border-lime-500/60 bg-slate-950/40',
-    code: 'bg-slate-900 border-slate-800'
-  },
-  claro: {
-    app: 'bg-slate-100 text-slate-900',
-    header: 'border-slate-200 bg-white/90',
-    card: 'bg-white border-slate-200',
-    sub: 'bg-slate-50 border-slate-200',
-    subHover: 'hover:border-slate-300',
-    inner: 'bg-white border-slate-200',
-    input: 'bg-white border-slate-300 text-slate-900 placeholder-slate-400',
-    muted: 'text-slate-500',
-    faint: 'text-slate-400',
-    body: 'text-slate-700',
-    strong: 'text-slate-900',
-    accent: 'text-lime-600',
-    chip: 'bg-slate-200 text-slate-700',
-    tabs: 'bg-slate-100 border-slate-200',
-    tabOff: 'text-slate-600 hover:text-slate-900',
-    btnSec: 'bg-slate-200 text-slate-700 hover:bg-slate-300',
-    iconBtn: 'border-slate-300 hover:bg-slate-100',
-    cell: 'border-slate-200 bg-slate-50 hover:bg-slate-100',
-    cellPad: 'bg-slate-200/40',
-    dayNum: 'text-slate-600',
-    dayHover: 'hover:bg-slate-200',
-    divider: 'border-slate-200',
-    track: 'bg-slate-200',
-    drop: 'border-slate-300 hover:border-lime-500 bg-slate-50',
-    code: 'bg-slate-100 border-slate-200'
-  }
-};
-
-const CORES = {
-  verde: { solid: 'bg-lime-400 text-slate-950', soft: 'bg-lime-500/15 text-lime-500 border border-lime-500/30', dot: 'bg-lime-400' },
-  vermelho: { solid: 'bg-red-500 text-white', soft: 'bg-red-500/15 text-red-500 border border-red-500/30', dot: 'bg-red-500' },
-  laranja: { solid: 'bg-orange-400 text-slate-950', soft: 'bg-orange-400/15 text-orange-500 border border-orange-400/30', dot: 'bg-orange-400' },
-  amarelo: { solid: 'bg-yellow-400 text-slate-950', soft: 'bg-yellow-400/15 text-yellow-600 border border-yellow-400/30', dot: 'bg-yellow-400' }
-};
-
-const corDoItem = (item) => {
-  if (item.source === 'google') {
-    if (item.type === 'ausencia') return CORES.vermelho;
-    if (item.type === 'feriado') return CORES.amarelo;
-    return CORES.verde;
-  }
-  if (item.category === 'Saúde' || item.category === 'Ausência') return CORES.vermelho;
-  if (item.category === 'Prazo') return CORES.laranja;
-  return CORES.verde;
-};
-
-/* =========================================================================
-   UTILITÁRIOS DE DATA
-   ========================================================================= */
-
-const pad2 = (n) => String(n).padStart(2, '0');
-
-// Data LOCAL no formato AAAA-MM-DD.
-// (O toISOString() usa UTC: depois das 21h no Brasil ele já devolve o dia seguinte.)
-const toDateStr = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-const hojeStr = () => toDateStr(new Date());
-const montarData = (ano, mes, dia) => `${ano}-${pad2(mes + 1)}-${pad2(dia)}`;
-
-const formatarDataBR = (dateStr) => {
-  if (!dateStr) return '';
-  const [a, m, d] = dateStr.slice(0, 10).split('-');
-  return `${d}/${m}/${a}`;
-};
-
-const formatarDataExtenso = (dateStr) => {
-  if (!dateStr) return '';
-  const [a, m, d] = dateStr.split('-').map(Number);
-  const texto = new Date(a, m - 1, d).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
-  return texto.charAt(0).toUpperCase() + texto.slice(1);
-};
-
-// O Google manda "start" como "2026-11-05" (dia inteiro) ou "2026-11-05T09:00:00-03:00"
-const lerInicioGoogle = (start) => {
-  if (!start) return { date: '', time: '' };
-  if (start.length <= 10) return { date: start, time: '' };
-  const d = new Date(start);
-  if (isNaN(d)) return { date: start.slice(0, 10), time: '' };
-  return { date: toDateStr(d), time: `${pad2(d.getHours())}:${pad2(d.getMinutes())}` };
-};
-
-const textoPuro = (html) => String(html || '').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').trim();
-
-const novoId = () => (window.crypto?.randomUUID
-  ? window.crypto.randomUUID()
-  : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
-
-// Remove campos vazios (undefined/null) para não "descontrolar" os inputs do formulário
-const semVazios = (obj) => Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined && v !== null));
-
-const progressoPorStatus = (status) => (status === 'Concluído' ? 100 : status === 'Em Andamento' ? 50 : 10);
-
-/* =========================================================================
-   PERSISTÊNCIA
-   - Textos (compromissos, notas, projetos, informações do dia): localStorage
-   - Arquivos anexados (imagens/PDF/Word): IndexedDB, que aguenta arquivos
-     grandes. O localStorage só comporta ~5 MB no total.
-   ========================================================================= */
-
-const lerLocal = (chave, padrao) => {
-  try {
-    const salvo = localStorage.getItem(chave);
-    return salvo ? JSON.parse(salvo) : padrao;
-  } catch {
-    return padrao;
-  }
-};
-
-const gravarLocal = (chave, valor) => {
-  try {
-    localStorage.setItem(chave, JSON.stringify(valor));
-  } catch (err) {
-    console.error(`Não foi possível salvar "${chave}":`, err);
-  }
-};
-
-const DB_NOME = 'planner_flavia_anexos';
-const DB_STORE = 'arquivos';
-let dbPromise = null;
-
-const abrirBanco = () => {
-  if (!dbPromise) {
-    dbPromise = new Promise((resolve, reject) => {
-      const req = indexedDB.open(DB_NOME, 1);
-      req.onupgradeneeded = () => req.result.createObjectStore(DB_STORE);
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => {
-        dbPromise = null;
-        reject(req.error);
-      };
-    });
-  }
-  return dbPromise;
-};
-
-const executarNoBanco = async (modo, acao) => {
-  const db = await abrirBanco();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(DB_STORE, modo);
-    const req = acao(tx.objectStore(DB_STORE));
-    tx.oncomplete = () => resolve(req?.result);
-    tx.onerror = () => reject(tx.error);
-    tx.onabort = () => reject(tx.error);
-  });
-};
-
-const salvarArquivo = (id, blob) => executarNoBanco('readwrite', (store) => store.put(blob, id));
-const lerArquivo = (id) => executarNoBanco('readonly', (store) => store.get(id));
-const apagarArquivo = (id) => executarNoBanco('readwrite', (store) => store.delete(id));
-
-const extensao = (nome = '') => (nome.split('.').pop() || '').toLowerCase();
-const ehImagem = (arq) => ['jpg', 'jpeg', 'png'].includes(extensao(arq.name)) || (arq.type || '').startsWith('image/');
-const formatarTamanho = (bytes = 0) => (bytes < 1024 * 1024
-  ? `${Math.max(1, Math.round(bytes / 1024))} KB`
-  : `${(bytes / 1024 / 1024).toFixed(1)} MB`);
-
-const validarArquivo = (file) => {
-  if (!EXTENSOES_ACEITAS.includes(extensao(file.name))) {
-    return `"${file.name}" não é aceito (use JPEG, PNG, PDF, DOC ou DOCX).`;
-  }
-  if (file.size > TAMANHO_MAX_MB * 1024 * 1024) {
-    return `"${file.name}" passa de ${TAMANHO_MAX_MB} MB.`;
-  }
-  return null;
-};
-
-/* =========================================================================
-   COMPONENTE: anexo já salvo (lê o arquivo do IndexedDB)
-   ========================================================================= */
-
-function AnexoSalvo({ anexo, t, onAbrirImagem }) {
-  const [url, setUrl] = useState(null);
-  const [indisponivel, setIndisponivel] = useState(false);
-
-  useEffect(() => {
-    let ativo = true;
-    let objectUrl = null;
-    lerArquivo(anexo.id)
-      .then((blob) => {
-        if (!ativo) return;
-        if (!blob) {
-          setIndisponivel(true);
-          return;
-        }
-        objectUrl = URL.createObjectURL(blob);
-        setUrl(objectUrl);
-      })
-      .catch(() => {
-        if (ativo) setIndisponivel(true);
-      });
-    return () => {
-      ativo = false;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [anexo.id]);
-
-  if (indisponivel) {
-    return (
-      <div
-        className={`flex items-center gap-2 text-[11px] p-1.5 rounded border ${t.sub} ${t.faint}`}
-        title="Este arquivo foi anexado em outro navegador ou computador"
-      >
-        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-        <span className="truncate">{anexo.name} (não disponível neste navegador)</span>
-      </div>
-    );
-  }
-
-  if (ehImagem(anexo)) {
-    return (
-      <button
-        type="button"
-        onClick={() => url && onAbrirImagem({ url, name: anexo.name })}
-        className={`w-20 h-20 rounded-lg border overflow-hidden flex items-center justify-center hover:border-lime-400 transition ${t.sub}`}
-        title={`${anexo.name} (clique para ampliar)`}
-      >
-        {url
-          ? <img src={url} alt={anexo.name} className="w-full h-full object-cover" />
-          : <ImageIcon className={`w-5 h-5 ${t.faint}`} />}
-      </button>
-    );
-  }
-
-  const ehPdf = extensao(anexo.name) === 'pdf';
-  return (
-    <a
-      href={url || undefined}
-      target={ehPdf ? '_blank' : undefined}
-      rel="noreferrer"
-      download={ehPdf ? undefined : anexo.name}
-      className={`flex items-center gap-2 text-[11px] p-1.5 rounded border hover:border-lime-400 transition ${t.sub} ${url ? '' : 'pointer-events-none opacity-60'}`}
-      title={ehPdf ? 'Abrir PDF em nova aba' : 'Baixar arquivo'}
-    >
-      <FileIcon className={`w-4 h-4 shrink-0 ${ehPdf ? 'text-red-400' : 'text-sky-400'}`} />
-      <span className="truncate flex-1">{anexo.name}</span>
-      <span className={t.faint}>{formatarTamanho(anexo.size)}</span>
-      {ehPdf ? <ExternalLink className="w-3.5 h-3.5 shrink-0" /> : <Download className="w-3.5 h-3.5 shrink-0" />}
-    </a>
-  );
-}
-
-/* =========================================================================
-   APP
-   ========================================================================= */
-
-const formularioVazio = (data = hojeStr()) => ({
-  title: '',
-  // compromisso
-  category: 'Trabalho',
-  priority: 'Média',
-  date: data,
-  time: '',
-  meetLink: '',
-  description: '',
-  // nota de sistema
-  system: 'SoulMV',
-  path: '',
-  content: '',
-  actionsTaken: '',
-  // projeto
-  status: 'Pendente'
-});
 
 export default function App() {
-  // ---------------- Interface ----------------
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isDarkMode, setIsDarkMode] = useState(() => lerLocal('planner_tema_escuro', true));
-  const t = isDarkMode ? TEMAS.escuro : TEMAS.claro;
+  const [activeTab, setActiveTab] = useState('inicio');
+  const [items, setItems] = useState([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
 
-  // ---------------- Dados locais ----------------
-  const [tasks, setTasks] = useState(() => lerLocal('planner_tasks', TAREFAS_INICIAIS));
-  const [notes, setNotes] = useState(() => lerLocal('planner_notes', NOTAS_INICIAIS));
-  const [projects, setProjects] = useState(() => lerLocal('planner_projects', PROJETOS_INICIAIS));
-  const [infoDias, setInfoDias] = useState(() => lerLocal('planner_info_dias', {}));
-
-  useEffect(() => { gravarLocal('planner_tasks', tasks); }, [tasks]);
-  useEffect(() => { gravarLocal('planner_notes', notes); }, [notes]);
-  useEffect(() => { gravarLocal('planner_projects', projects); }, [projects]);
-  useEffect(() => { gravarLocal('planner_info_dias', infoDias); }, [infoDias]);
-  useEffect(() => { gravarLocal('planner_tema_escuro', isDarkMode); }, [isDarkMode]);
-
-  // ---------------- Calendário ----------------
-  const hoje = hojeStr();
-  const [viewDate, setViewDate] = useState(() => {
-    const d = new Date();
-    return { year: d.getFullYear(), month: d.getMonth() };
+  // Modal de Conclusão / Parecer Técnico
+  const [isConclusionModalOpen, setIsConclusionModalOpen] = useState(false);
+  const [conclusionItem, setConclusionItem] = useState(null);
+  const [conclusionForm, setConclusionForm] = useState({ 
+    consideracoes: '', 
+    anexoUrl: '', 
+    anexoNome: '', 
+    anexoTipo: '', 
+    nomeSolicitante: '',
+    emailSolicitante: '' 
   });
-  const [calendarView, setCalendarView] = useState('mes'); // 'mes' | 'ano'
-  const [filtroModo, setFiltroModo] = useState('mes'); // 'dia' | 'mes' | 'ano'
-  const [selectedDay, setSelectedDay] = useState(hoje);
-  const { year, month } = viewDate;
+  const [conclusionFilePreview, setConclusionFilePreview] = useState(null);
 
-  // ---------------- Google (Calendar & Gmail) ----------------
-  const [googleEvents, setGoogleEvents] = useState([]);
-  const [emails, setEmails] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [loadingGoogle, setLoadingGoogle] = useState(true);
-  const [erroGmail, setErroGmail] = useState(false);
+  // Modal para Visualizar Considerações/Parecer Salvo
+  const [viewParecerModal, setViewParecerModal] = useState(null);
 
-  // E-mails: carrega uma vez
+  // Modal para Visualizar Anexo
+  const [viewAnexo, setViewAnexo] = useState(null);
+
+  // Sistema de Notificação
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const previousTotalRef = useRef({});
+
+  // Controle de Histórico Dinâmico
+  const [showHistory, setShowHistory] = useState(false);
+
+  // Paginação e Ordenação
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  const [sortConfig, setSortConfig] = useState({ key: 'data_abertura', direction: 'desc' });
+
+  // Estatísticas Globais do Dashboard
+  const [dashStats, setDashStats] = useState({
+    criticas: { total: 0, pendente: 0, andamento: 0, aguardandoTi: 0, concluido: 0 },
+    sem_valor: { total: 0, pendente: 0, andamento: 0, concluido: 0, slaEstourado: 0 },
+    sem_tuss: { total: 0, pendente: 0, andamento: 0, concluido: 0, slaEstourado: 0 },
+    chamados: { total: 0, pendente: 0, andamento: 0, concluido: 0, altaPrioridade: 0 }
+  });
+
+  // Estados dos Filtros Avançados (filterStatus como Array para Múltipla Escolha)
+  const [filterStatus, setFilterStatus] = useState([]);
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
+  const statusDropdownRef = useRef(null);
+
+  const [filterProfat, setFilterProfat] = useState('');
+  const [filterSistema, setFilterSistema] = useState('Todos');
+  const [filterChamado, setFilterChamado] = useState('');
+  const [filterDateStart, setFilterDateStart] = useState('');
+  const [filterDateEnd, setFilterDateEnd] = useState('');
+
+  // Form State
+  const [formData, setFormData] = useState({});
+  const [filePreview, setFilePreview] = useState(null);
+
+  // Form Feedback State
+  const [feedback, setFeedback] = useState({ nome: '', email: '', tipo: 'Sugestão de Melhoria', mensagem: '' });
+  const [feedbackEnviado, setFeedbackEnviado] = useState(false);
+
+  // Fechar o dropdown de status ao clicar fora dele
   useEffect(() => {
-    let ativo = true;
-    (async () => {
-      try {
-        const res = await fetch('/api/emails');
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        if (ativo && data.emails) {
-          setEmails(data.emails);
-          setUnreadCount(data.unreadCount || 0);
-        }
-      } catch (err) {
-        console.error('Erro ao carregar e-mails:', err);
-        if (ativo) setErroGmail(true);
-      } finally {
-        if (ativo) setLoadingGoogle(false);
+    function handleClickOutside(event) {
+      if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target)) {
+        setIsStatusDropdownOpen(false);
       }
-    })();
-    return () => { ativo = false; };
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Agenda: recarrega quando o ANO exibido muda (a rota recebe o período em timeMin/timeMax)
+  // Reseta a página para 1 ao mudar de aba ou alterar filtros
   useEffect(() => {
-    let ativo = true;
-    const inicio = `${year}-01-01T00:00:00-03:00`;
-    const fim = `${year + 1}-01-01T00:00:00-03:00`;
-    (async () => {
-      try {
-        const res = await fetch(`/api/calendar?timeMin=${encodeURIComponent(inicio)}&timeMax=${encodeURIComponent(fim)}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        if (ativo && Array.isArray(data.events)) setGoogleEvents(data.events);
-      } catch (err) {
-        console.error('Erro ao carregar o Google Agenda:', err);
-      }
-    })();
-    return () => { ativo = false; };
-  }, [year]);
+    setCurrentPage(1);
+  }, [activeTab, filterStatus, filterProfat, filterSistema, filterChamado, filterDateStart, filterDateEnd, showHistory]);
 
-  // ---------------- Busca ----------------
-  const termo = searchTerm.trim().toLowerCase();
-  const combina = (...campos) => !termo || campos.some((c) => String(c ?? '').toLowerCase().includes(termo));
-
-  // Itens do calendário (compromissos locais + Google), já filtrados pela busca
-  const itensCalendario = useMemo(() => {
-    const locais = tasks.map((tarefa) => ({ ...tarefa, source: 'local' }));
-    const google = googleEvents.map((evt) => {
-      const { date, time } = lerInicioGoogle(evt.start);
-      return {
-        ...evt,
-        source: 'google',
-        date,
-        time: evt.time || time,
-        meetLink: evt.meetLink || evt.hangoutLink || '',
-        description: textoPuro(evt.description)
-      };
-    });
-    return [...locais, ...google]
-      .filter((item) => item.date && combina(item.title, item.description, item.category))
-      .sort((a, b) => `${a.date}${a.time || ''}`.localeCompare(`${b.date}${b.time || ''}`));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, googleEvents, termo]);
-
-  const itensPorDia = useMemo(() => {
-    const mapa = {};
-    itensCalendario.forEach((item) => {
-      (mapa[item.date] = mapa[item.date] || []).push(item);
-    });
-    return mapa;
-  }, [itensCalendario]);
-
-  // Navegação
-  const navegar = (direcao) => {
-    setViewDate(({ year: a, month: m }) => {
-      if (calendarView === 'ano') return { year: a + direcao, month: m };
-      const nova = new Date(a, m + direcao, 1);
-      return { year: nova.getFullYear(), month: nova.getMonth() };
-    });
-  };
-
-  const irParaHoje = () => {
-    const d = new Date();
-    setViewDate({ year: d.getFullYear(), month: d.getMonth() });
-    setSelectedDay(toDateStr(d));
-  };
-
-  const irParaDia = (dateStr) => {
-    if (!dateStr) return;
-    const [a, m] = dateStr.split('-').map(Number);
-    setViewDate({ year: a, month: m - 1 });
-    setSelectedDay(dateStr);
-    setCalendarView('mes');
-  };
-
-  const trocarFiltro = (modo) => {
-    setFiltroModo(modo);
-    setCalendarView(modo === 'ano' ? 'ano' : 'mes');
-  };
-
-  const abrirMesNaVisaoAnual = (m) => {
-    setViewDate((v) => ({ ...v, month: m }));
-    setCalendarView('mes');
-    setFiltroModo('mes');
-  };
-
-  const anoAtual = new Date().getFullYear();
-  const anos = [];
-  for (let a = Math.min(anoAtual - 3, year); a <= Math.max(anoAtual + 5, year); a++) anos.push(a);
-
-  const diasNoMes = new Date(year, month + 1, 0).getDate();
-  const primeiroDiaSemana = new Date(year, month, 1).getDay();
-  const totalCelulas = Math.ceil((primeiroDiaSemana + diasNoMes) / 7) * 7;
-
-  // Informações livres do dia selecionado
-  const infoDoDia = infoDias[selectedDay] || '';
-  const atualizarInfoDia = (texto) => {
-    setInfoDias((prev) => {
-      const novo = { ...prev };
-      if (texto) novo[selectedDay] = texto;
-      else delete novo[selectedDay];
-      return novo;
-    });
-  };
-
-  // ---------------- Modais e formulário ----------------
-  const [modalKind, setModalKind] = useState(null); // 'compromisso' | 'nota' | 'projeto' | null
-  const [editingId, setEditingId] = useState(null);
-  const [formData, setFormData] = useState(() => formularioVazio());
-  const [arquivosNovos, setArquivosNovos] = useState([]); // [{ id, file, preview }]
-  const [anexosMantidos, setAnexosMantidos] = useState([]); // anexos já salvos (ao editar)
-  const [anexosRemovidos, setAnexosRemovidos] = useState([]);
-  const [erroForm, setErroForm] = useState('');
-  const [salvando, setSalvando] = useState(false);
-  const [arrastando, setArrastando] = useState(false);
-  const inputArquivoRef = useRef(null);
-
-  const [selectedEventDetails, setSelectedEventDetails] = useState(null);
-  const [imagemAberta, setImagemAberta] = useState(null);
-
-  const campo = (nome) => (e) => setFormData((f) => ({ ...f, [nome]: e.target.value }));
-
-  const limparArquivosNovos = () => {
-    setArquivosNovos((lista) => {
-      lista.forEach((a) => a.preview && URL.revokeObjectURL(a.preview));
-      return [];
-    });
-  };
-
-  const prepararModal = (kind, dados, id = null) => {
-    limparArquivosNovos();
-    setModalKind(kind);
-    setEditingId(id);
-    setFormData(dados);
-    setErroForm('');
-    setArrastando(false);
-  };
-
-  const abrirModal = (kind, preset = {}) => {
-    prepararModal(kind, { ...formularioVazio(selectedDay || hoje), ...preset });
-    setAnexosMantidos([]);
-    setAnexosRemovidos([]);
-  };
-
-  const abrirEdicaoTarefa = (tarefa) => {
-    setSelectedEventDetails(null);
-    prepararModal('compromisso', { ...formularioVazio(), ...semVazios(tarefa) }, tarefa.id);
-    setAnexosMantidos([]);
-    setAnexosRemovidos([]);
-  };
-
-  const abrirEdicaoNota = (nota) => {
-    prepararModal('nota', { ...formularioVazio(), ...semVazios(nota) }, nota.id);
-    setAnexosMantidos(nota.attachments || []);
-    setAnexosRemovidos([]);
-  };
-
-  const fecharModal = () => {
-    limparArquivosNovos();
-    setModalKind(null);
-    setEditingId(null);
-    setErroForm('');
-    setArrastando(false);
-  };
-
-  const kindDoTab = activeTab === 'notas' ? 'nota' : activeTab === 'matriz' ? 'projeto' : 'compromisso';
-
-  // ---------------- Anexos no formulário ----------------
-  const adicionarArquivos = (fileList) => {
-    const erros = [];
-    const validos = [];
-    Array.from(fileList || []).forEach((file) => {
-      const erro = validarArquivo(file);
-      if (erro) erros.push(erro);
-      else validos.push({ id: novoId(), file, preview: ehImagem(file) ? URL.createObjectURL(file) : null });
-    });
-    if (validos.length) setArquivosNovos((lista) => [...lista, ...validos]);
-    setErroForm(erros.join(' '));
-  };
-
-  // Ctrl+V de um print (captura de tela) dentro da janela da nota
-  const colarImagem = (e) => {
-    if (modalKind !== 'nota') return;
-    const imagens = Array.from(e.clipboardData?.files || []).filter((f) => ['image/png', 'image/jpeg'].includes(f.type));
-    if (!imagens.length) return;
-    e.preventDefault();
-    const carimbo = new Date();
-    const base = `print-${toDateStr(carimbo)}-${pad2(carimbo.getHours())}${pad2(carimbo.getMinutes())}${pad2(carimbo.getSeconds())}`;
-    adicionarArquivos(imagens.map((f, i) => new File(
-      [f],
-      `${base}${i ? `-${i}` : ''}.${f.type === 'image/jpeg' ? 'jpg' : 'png'}`,
-      { type: f.type }
-    )));
-  };
-
-  const removerArquivoNovo = (id) => {
-    setArquivosNovos((lista) => {
-      const alvo = lista.find((a) => a.id === id);
-      if (alvo?.preview) URL.revokeObjectURL(alvo.preview);
-      return lista.filter((a) => a.id !== id);
-    });
-  };
-
-  const removerAnexoMantido = (anexo) => {
-    setAnexosMantidos((lista) => lista.filter((a) => a.id !== anexo.id));
-    setAnexosRemovidos((lista) => [...lista, anexo]);
-  };
-
-  // ---------------- Salvar formulário ----------------
-  const handleSubmitForm = async (e) => {
-    e.preventDefault();
-    if (!formData.title.trim() || salvando) return;
-    setSalvando(true);
-    setErroForm('');
-    const salvosAgora = [];
-
-    try {
-      if (modalKind === 'nota') {
-        // 1) grava os arquivos novos no IndexedDB
-        const novosAnexos = [];
-        for (const item of arquivosNovos) {
-          await salvarArquivo(item.id, item.file);
-          salvosAgora.push(item.id);
-          novosAnexos.push({ id: item.id, name: item.file.name, type: item.file.type, size: item.file.size, addedAt: hojeStr() });
+  // Listener para o Dashboard Global e Notificações em Tempo Real
+  useEffect(() => {
+    const collections = ['criticas', 'sem_valor', 'sem_tuss', 'chamados'];
+    const unsubscribes = collections.map(colName => {
+      const q = query(collection(db, colName));
+      return onSnapshot(q, (snapshot) => {
+        let docs = snapshot.docs.map(doc => doc.data());
+        
+        if (colName === 'criticas' && docs.length === 0) {
+          docs = CHAMADOS_NTI_INICIAIS;
         }
-        // 2) apaga os anexos que foram removidos na edição
-        await Promise.all(anexosRemovidos.map((a) => apagarArquivo(a.id).catch(() => {})));
 
-        const dadosNota = {
-          title: formData.title.trim(),
-          system: formData.system,
-          path: formData.path,
-          content: formData.content,
-          actionsTaken: formData.actionsTaken,
-          attachments: [...anexosMantidos, ...novosAnexos]
-        };
-        if (editingId) {
-          setNotes((lista) => lista.map((n) => (n.id === editingId ? { ...n, ...dadosNota, updatedAt: hojeStr() } : n)));
-        } else {
-          setNotes((lista) => [{ id: novoId(), date: hojeStr(), ...dadosNota }, ...lista]);
+        const total = docs.length;
+        const pendente = docs.filter(d => (d.status || 'Pendente') === 'Pendente' || d.status === 'Aberto').length;
+        const andamento = docs.filter(d => d.status === 'Em Andamento' || d.status === 'Em andamento').length;
+        const aguardandoTi = docs.filter(d => d.status === 'Aguardando TI').length;
+        const concluido = docs.filter(d => d.status === 'Concluído').length;
+
+        let slaEstourado = 0;
+        if (colName === 'sem_valor') {
+          slaEstourado = docs.filter(d => {
+            if (d.status === 'Concluído' || !d.dtSolicitacao) return false;
+            return ((new Date() - new Date(d.dtSolicitacao)) / 3600000) > 48;
+          }).length;
         }
-      } else if (modalKind === 'projeto') {
-        setProjects((lista) => [...lista, {
-          id: novoId(),
-          title: formData.title.trim(),
-          system: formData.system,
-          status: formData.status,
-          progress: progressoPorStatus(formData.status)
-        }]);
+        if (colName === 'sem_tuss') {
+          slaEstourado = docs.filter(d => {
+            if (d.status === 'Concluído' || !d.dtSolicitacao) return false;
+            return ((new Date() - new Date(d.dtSolicitacao)) / 3600000) > 24;
+          }).length;
+        }
+
+        let altaPrioridade = 0;
+        if (colName === 'chamados') {
+          altaPrioridade = docs.filter(d => d.prioridade === 'Alta' && d.status !== 'Concluído').length;
+        }
+
+        if (previousTotalRef.current[colName] !== undefined && total > previousTotalRef.current[colName]) {
+          if (Notification.permission === 'granted') {
+            new Notification('🔔 Nova Demanda Registrada!', {
+              body: `Novo registro inserido no módulo: ${colName.toUpperCase()}`,
+              icon: '/logo-unimed.png'
+            });
+          }
+        }
+        previousTotalRef.current[colName] = total;
+
+        setDashStats(prev => ({
+          ...prev,
+          [colName]: { total, pendente, andamento, aguardandoTi, concluido, slaEstourado, altaPrioridade }
+        }));
+      });
+    });
+
+    return () => unsubscribes.forEach(unsub => unsub());
+  }, []);
+
+  // Listener para a Tabela Ativa
+  useEffect(() => {
+    if (activeTab === 'inicio') return;
+
+    const q = query(collection(db, activeTab), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      if (activeTab === 'criticas' && data.length === 0) {
+        const importadosFormatados = CHAMADOS_NTI_INICIAIS.map((c, idx) => ({
+          id: `nti-${idx}`,
+          ...c,
+          createdAt: c.data_abertura ? `${c.data_abertura}T00:00:00.000Z` : new Date().toISOString()
+        }));
+        setItems(importadosFormatados);
       } else {
-        const dadosTarefa = {
-          title: formData.title.trim(),
-          category: formData.category,
-          priority: formData.priority,
-          date: formData.date,
-          time: formData.time,
-          meetLink: formData.meetLink,
-          description: formData.description
-        };
-        if (editingId) {
-          setTasks((lista) => lista.map((x) => (x.id === editingId ? { ...x, ...dadosTarefa } : x)));
-        } else {
-          setTasks((lista) => [...lista, { id: novoId(), status: 'Pendente', ...dadosTarefa }]);
-        }
-        // leva o calendário até a data do compromisso salvo
-        if (formData.date) {
-          const [a, m] = formData.date.split('-').map(Number);
-          setViewDate({ year: a, month: m - 1 });
-          setSelectedDay(formData.date);
-        }
+        setItems(data);
       }
-      fecharModal();
-    } catch (err) {
-      console.error('Erro ao salvar:', err);
-      await Promise.all(salvosAgora.map((id) => apagarArquivo(id).catch(() => {})));
-      setErroForm('Não foi possível salvar os anexos. O espaço do navegador pode estar cheio: tente arquivos menores.');
-    } finally {
-      setSalvando(false);
+    }, (error) => {
+      console.error("Erro ao buscar dados do Firebase:", error);
+      if (activeTab === 'criticas') {
+        const importadosFormatados = CHAMADOS_NTI_INICIAIS.map((c, idx) => ({
+          id: `nti-${idx}`,
+          ...c,
+          createdAt: c.data_abertura ? `${c.data_abertura}T00:00:00.000Z` : new Date().toISOString()
+        }));
+        setItems(importadosFormatados);
+      }
+    });
+    return () => unsubscribe();
+  }, [activeTab]);
+
+  const toggleNotifications = () => {
+    if (!('Notification' in window)) {
+      alert('Seu navegador não suporta notificações de área de trabalho.');
+      return;
+    }
+    if (Notification.permission === 'granted') {
+      setNotificationsEnabled(true);
+      alert('Alertas de novas demandas já estão ativos!');
+    } else {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          setNotificationsEnabled(true);
+          new Notification('Faturamento Unimed', {
+            body: 'Notificações ativadas! Você será avisada quando chegar uma nova demanda.',
+            icon: '/logo-unimed.png'
+          });
+        }
+      });
     }
   };
 
-  // ---------------- Ações ----------------
-  const alternarStatusTarefa = (id) => {
-    setTasks((lista) => lista.map((x) => (x.id === id
-      ? { ...x, status: x.status === 'Concluído' ? 'Pendente' : 'Concluído' }
-      : x)));
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const moveProjectStatus = (id, newStatus) => {
-    setProjects((lista) => lista.map((p) => (p.id === id
-      ? { ...p, status: newStatus, progress: progressoPorStatus(newStatus) }
-      : p)));
+  // Alterna opções no filtro múltiplo de status
+  const toggleStatusFilter = (statusValue) => {
+    setFilterStatus(prev => 
+      prev.includes(statusValue) 
+        ? prev.filter(s => s !== statusValue)
+        : [...prev, statusValue]
+    );
   };
 
-  const deleteTask = (id) => {
-    if (!window.confirm('Excluir este compromisso?')) return;
-    setTasks((lista) => lista.filter((x) => x.id !== id));
-    setSelectedEventDetails(null);
+  // Upload no Formulário Principal (Max 1MB)
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 1024 * 1024) {
+        alert("O arquivo é muito grande! O limite de tamanho permitido é de 1 MB.");
+        e.target.value = "";
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({
+          ...prev,
+          anexoUrl: reader.result,
+          anexoNome: file.name,
+          anexoTipo: file.type
+        }));
+        setFilePreview(file.name);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
-  const deleteNote = async (nota) => {
-    const qtd = (nota.attachments || []).length;
-    const msg = qtd ? `Excluir a nota "${nota.title}" e ${qtd} anexo(s)?` : `Excluir a nota "${nota.title}"?`;
-    if (!window.confirm(msg)) return;
-    await Promise.all((nota.attachments || []).map((a) => apagarArquivo(a.id).catch(() => {})));
-    setNotes((lista) => lista.filter((n) => n.id !== nota.id));
+  // Upload na Janela de Conclusão (Max 1MB)
+  const handleConclusionFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 1024 * 1024) {
+        alert("O arquivo do parecer é muito grande! Por favor, selecione um arquivo de até 1 MB.");
+        e.target.value = "";
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setConclusionForm(prev => ({
+          ...prev,
+          anexoUrl: reader.result,
+          anexoNome: file.name,
+          anexoTipo: file.type
+        }));
+        setConclusionFilePreview(file.name);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
-  const deleteProject = (id) => {
-    if (!window.confirm('Excluir este projeto?')) return;
-    setProjects((lista) => lista.filter((p) => p.id !== id));
+  const handleOpenAnexo = (anexo) => {
+    if (!anexo || !anexo.anexoUrl) return;
+
+    if (anexo.anexoUrl.startsWith('data:')) {
+      try {
+        const arr = anexo.anexoUrl.split(',');
+        const mime = arr[0].match(/:(.*?);/)[1];
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+        const blob = new Blob([u8arr], { type: mime });
+        const blobUrl = URL.createObjectURL(blob);
+        
+        if (mime.startsWith('image/')) {
+          setViewAnexo({ url: blobUrl, nome: anexo.anexoNome, tipo: mime });
+        } else {
+          window.open(blobUrl, '_blank');
+        }
+      } catch (err) {
+        console.error("Erro ao processar anexo:", err);
+        alert("Não foi possível abrir o anexo.");
+      }
+    } else {
+      window.open(anexo.anexoUrl, '_blank');
+    }
   };
 
-  // Detalhe aberto: compromissos locais são lidos do estado atual (reflete edições/conclusões)
-  const detalhe = (() => {
-    if (!selectedEventDetails) return null;
-    if (selectedEventDetails.source !== 'local') return selectedEventDetails;
-    const tarefa = tasks.find((x) => x.id === selectedEventDetails.id);
-    return tarefa ? { ...tarefa, source: 'local' } : null;
-  })();
+  const handleOpenNewModal = () => {
+    setEditingId(null);
+    setFilePreview(null);
+    const dataHojeIso = new Date().toISOString().substring(0, 10);
+    if (activeTab === 'chamados') {
+      const novoCodigoChamado = `CH-${Math.floor(100000 + Math.random() * 900000)}`;
+      setFormData({ codChamado: novoCodigoChamado, prioridade: 'Média', sistema: 'SoulMV', tipoChamado: 'Falha', status: 'Pendente', data_abertura: dataHojeIso, nomeSolicitante: '', emailSolicitante: '' });
+    } else {
+      setFormData({ status: 'Pendente', sistema: 'SoulMV', data_abertura: dataHojeIso, nomeSolicitante: '', emailSolicitante: '' });
+    }
+    setIsModalOpen(true);
+  };
 
-  // Listas filtradas
-  const tarefasFiltradas = tasks
-    .filter((x) => combina(x.title, x.description, x.category, x.priority))
-    .sort((a, b) => `${a.date}${a.time || ''}`.localeCompare(`${b.date}${b.time || ''}`));
+  const handleOpenEditModal = (item) => {
+    setEditingId(item.id);
+    setFormData({ ...item });
+    setFilePreview(item.anexoNome || null);
+    setIsModalOpen(true);
+  };
 
-  const notasFiltradas = notes.filter((n) => combina(
-    n.title, n.system, n.path, n.content, n.actionsTaken, ...(n.attachments || []).map((a) => a.name)
-  ));
+  // Abertura do Modal Dedicado "Concluir Demanda"
+  const handleOpenConclusionModal = (item) => {
+    setConclusionItem(item);
+    setConclusionForm({
+      consideracoes: item.consideracoesConclusao || '',
+      anexoUrl: item.anexoConclusaoUrl || '',
+      anexoNome: item.anexoConclusaoNome || '',
+      anexoTipo: item.anexoConclusaoTipo || '',
+      nomeSolicitante: item.nomeSolicitante || item.nomeUsuario || item.usuario || '',
+      emailSolicitante: item.emailSolicitante || ''
+    });
+    setConclusionFilePreview(item.anexoConclusaoNome || null);
+    setIsConclusionModalOpen(true);
+  };
 
-  const projetosFiltrados = projects.filter((p) => combina(p.title, p.system, p.status));
+  // Disparo de E-mail via GMAIL WEB DIRETO
+  const triggerGmailWeb = (email, nome, consideracoesTexto, itemRef) => {
+    if (!email) {
+      alert("Por favor, preencha o e-mail do solicitante.");
+      return;
+    }
+    const refCod = itemRef?.numChamado ? `NTI #${itemRef.numChamado}` : (itemRef?.codChamado || itemRef?.codAtendimento || 'Demandas');
+    const emailSubject = `[Painel Faturamento] Solicitação Concluída (${refCod})`;
+    const emailBody = `Olá ${nome || 'Solicitante'},\n\nSua solicitação foi atendida com sucesso. Favor acessar o painel para confirmar a demanda concluída.\n\nConsiderações do Faturamento:\n${consideracoesTexto || 'Demanda analisada e finalizada pelo setor.'}`;
 
-  const proximasTarefas = tasks
-    .filter((x) => x.status !== 'Concluído')
-    .sort((a, b) => `${a.date}${a.time || ''}`.localeCompare(`${b.date}${b.time || ''}`))
-    .slice(0, 5);
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+    window.open(gmailUrl, '_blank');
+  };
 
-  const itensDoDiaSelecionado = itensPorDia[selectedDay] || [];
+  // Disparo para o Google Chat via Webhook
+  const sendGoogleChatNotification = async (itemRef, consideracoesTexto, nomeOverride, emailOverride) => {
+    if (!GOOGLE_CHAT_WEBHOOK_URL) {
+      alert("URL do Webhook do Google Chat não configurada no sistema. Para habilitar, insira a URL do seu espaço na linha 19 do arquivo.");
+      return;
+    }
 
-  /* =======================================================================
-     RENDER
-     ======================================================================= */
+    const refCod = itemRef?.numChamado ? `NTI #${itemRef.numChamado}` : (itemRef?.codChamado || itemRef?.codAtendimento || 'Demanda');
+    const nomeFinal = nomeOverride || itemRef?.nomeSolicitante || itemRef?.nomeUsuario || itemRef?.usuario || 'Não informado';
+    const emailFinal = emailOverride || itemRef?.emailSolicitante || '';
+
+    const messageText = `🟢 *Sua solicitação foi atendida com sucesso!*\n\n` +
+      `*Demanda:* ${refCod}\n` +
+      `*Solicitante:* ${nomeFinal}${emailFinal ? ` (${emailFinal})` : ''}\n` +
+      `*Parecer Técnico:* ${consideracoesTexto || 'Concluído pelo setor de Faturamento.'}\n\n` +
+      `_Favor acessar o painel para confirmar a demanda concluída._`;
+
+    try {
+      await fetch(GOOGLE_CHAT_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: messageText })
+      });
+      alert("✓ Notificação enviada com sucesso para o Google Chat!");
+    } catch (err) {
+      console.error("Erro ao enviar para o Google Chat:", err);
+      alert("Não foi possível enviar a notificação para o Google Chat.");
+    }
+  };
+
+  // Submissão da Conclusão da Demanda
+  const handleSaveConclusion = async (e) => {
+    e.preventDefault();
+    if (!conclusionItem) return;
+
+    const dataConclusao = new Date().toISOString();
+    const updateData = {
+      status: 'Concluído',
+      consideracoesConclusao: conclusionForm.consideracoes,
+      anexoConclusaoUrl: conclusionForm.anexoUrl,
+      anexoConclusaoNome: conclusionForm.anexoNome,
+      anexoConclusaoTipo: conclusionForm.anexoTipo,
+      nomeSolicitante: conclusionForm.nomeSolicitante,
+      emailSolicitante: conclusionForm.emailSolicitante,
+      dataConclusao: dataConclusao
+    };
+
+    try {
+      if (String(conclusionItem.id).startsWith('nti-')) {
+        setItems(prev => prev.map(i => i.id === conclusionItem.id ? { ...i, ...updateData } : i));
+      } else {
+        await updateDoc(doc(db, activeTab, conclusionItem.id), updateData);
+      }
+
+      setIsConclusionModalOpen(false);
+
+      if (conclusionForm.emailSolicitante) {
+        if (window.confirm("Demanda concluída! Deseja abrir a janela de e-mail no Gmail agora para notificar o solicitante?")) {
+          triggerGmailWeb(conclusionForm.emailSolicitante, conclusionForm.nomeSolicitante, conclusionForm.consideracoes, conclusionItem);
+        }
+      }
+    } catch (err) {
+      console.error("Erro ao concluir demanda:", err);
+      alert("Erro ao salvar a conclusão no banco de dados.");
+    }
+  };
+
+  const handleDeleteItem = async (id) => {
+    if (window.confirm("Tem certeza que deseja apagar este registro do banco de dados?")) {
+      try {
+        if (String(id).startsWith('nti-')) {
+          setItems(prev => prev.filter(item => item.id !== id));
+        } else {
+          await deleteDoc(doc(db, activeTab, id));
+        }
+      } catch (err) {
+        console.error("Erro ao apagar:", err);
+        alert("Erro ao excluir do banco de dados.");
+      }
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const dataCriacao = formData.data_abertura ? `${formData.data_abertura}T00:00:00.000Z` : new Date().toISOString();
+      if (editingId) {
+        if (String(editingId).startsWith('nti-')) {
+          setItems(prev => prev.map(item => item.id === editingId ? { ...formData, id: editingId } : item));
+        } else {
+          const itemRef = doc(db, activeTab, editingId);
+          const { id, ...dataToUpdate } = formData;
+          await updateDoc(itemRef, dataToUpdate);
+        }
+      } else {
+        await addDoc(collection(db, activeTab), {
+          ...formData,
+          status: formData.status || 'Pendente',
+          data_abertura: formData.data_abertura || new Date().toISOString().substring(0, 10),
+          createdAt: dataCriacao
+        });
+      }
+      setIsModalOpen(false);
+      setEditingId(null);
+      setFormData({});
+      setFilePreview(null);
+    } catch (err) {
+      console.error("Erro ao salvar:", err);
+      alert("Erro ao salvar no banco de dados.");
+    }
+  };
+
+  const handleStatusChange = async (id, newStatus) => {
+    try {
+      const targetItem = items.find(i => i.id === id);
+      if (newStatus === 'Concluído') {
+        handleOpenConclusionModal(targetItem);
+        return;
+      }
+
+      if (String(id).startsWith('nti-')) {
+        setItems(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item));
+      } else {
+        await updateDoc(doc(db, activeTab, id), { status: newStatus });
+      }
+    } catch (err) {
+      console.error("Erro ao atualizar status:", err);
+    }
+  };
+
+  const handleSendFeedback = (e) => {
+    e.preventDefault();
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=flavia.albuquerque@hospitalunimedcaruaru.com.br&su=${encodeURIComponent(`[Painel Faturamento] ${feedback.tipo} de ${feedback.nome}`)}&body=${encodeURIComponent(`Nome: ${feedback.nome}\nE-mail: ${feedback.email}\nTipo: ${feedback.tipo}\n\nMensagem:\n${feedback.mensagem}`)}`;
+    window.open(gmailUrl, '_blank');
+    setFeedbackEnviado(true);
+    setTimeout(() => setFeedbackEnviado(false), 5000);
+  };
+
+  const getSLAStatus = (dateString, maxHours = 48) => {
+    if (!dateString) return null;
+    const requestDate = new Date(dateString);
+    const now = new Date();
+    const diffHours = (now - requestDate) / (1000 * 60 * 60);
+
+    if (diffHours > maxHours) {
+      return { label: `SLA Estourado (+${maxHours}h)`, color: 'bg-red-100 text-red-800 border-red-300' };
+    } else if (diffHours > maxHours * 0.75) {
+      return { label: `Atenção SLA (${maxHours * 0.75}h+)`, color: 'bg-yellow-100 text-yellow-800 border-yellow-300' };
+    }
+    return { label: 'Dentro do SLA', color: 'bg-emerald-100 text-emerald-800 border-emerald-300' };
+  };
+
+  // Formatação de data visual BR (DD/MM/YYYY)
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '-';
+    try {
+      const parts = dateStr.substring(0, 10).split('-');
+      if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      return new Date(dateStr).toLocaleDateString('pt-BR');
+    } catch {
+      return dateStr;
+    }
+  };
+
+  // Lógica de Alternância de Ordenação por Coluna
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  // Componente de Cabeçalho com Indicador de Ordenação
+  const SortableHeader = ({ label, sortKey, className = "" }) => {
+    const isSorted = sortConfig.key === sortKey;
+    return (
+      <th 
+        onClick={() => handleSort(sortKey)} 
+        className={`p-4 cursor-pointer hover:bg-slate-100 transition select-none whitespace-nowrap ${className}`}
+        title={`Clique para ordenar por ${label}`}
+      >
+        <div className="flex items-center gap-1.5">
+          <span>{label}</span>
+          {isSorted ? (
+            sortConfig.direction === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-emerald-700 font-bold" /> : <ArrowDown className="w-3.5 h-3.5 text-emerald-700 font-bold" />
+          ) : (
+            <ArrowUpDown className="w-3 h-3 text-slate-300 hover:text-slate-500" />
+          )}
+        </div>
+      </th>
+    );
+  };
+
+  // 1. Filtragem Inicial dos Registros com Suporte a Filtro Múltiplo de Status
+  const filteredItems = items.filter((item) => {
+    const currentStatus = item.status || 'Pendente';
+    const isSearching = filterProfat.trim() !== '' || filterChamado.trim() !== '' || filterDateStart !== '' || filterDateEnd !== '';
+
+    // Se nenhum status foi explicitamente marcado e o usuário não está buscando, oculta concluídos/cancelados a menos que showHistory seja true
+    if (!showHistory && !isSearching && filterStatus.length === 0) {
+      if (currentStatus === 'Concluído' || currentStatus === 'Cancelado') {
+        return false;
+      }
+    }
+
+    // Se houver status selecionados no filtro múltiplo, verifica se o item bate com a lista
+    if (filterStatus.length > 0 && !filterStatus.includes(currentStatus)) {
+      return false;
+    }
+
+    if (filterProfat.trim() !== '') {
+      const queryStr = filterProfat.toLowerCase();
+      const profatMatch = String(item.profat || '').toLowerCase().includes(queryStr) ||
+                          String(item.criticaErro || '').toLowerCase().includes(queryStr) ||
+                          String(item.numChamado || '').toLowerCase().includes(queryStr) ||
+                          String(item.codAtendimento || '').toLowerCase().includes(queryStr);
+      if (!profatMatch) return false;
+    }
+
+    if (filterChamado.trim() !== '') {
+      const chamadoMatch = String(item.codChamado || '').toLowerCase().includes(filterChamado.toLowerCase()) ||
+                           String(item.tituloChamado || '').toLowerCase().includes(filterChamado.toLowerCase());
+      if (!chamadoMatch) return false;
+    }
+
+    if (filterSistema !== 'Todos' && item.sistema !== filterSistema) return false;
+
+    const itemDate = (item.data_abertura || item.createdAt || '').substring(0, 10);
+    if (filterDateStart && itemDate < filterDateStart) return false;
+    if (filterDateEnd && itemDate > filterDateEnd) return false;
+
+    return true;
+  });
+
+  // 2. Ordenação Dinâmica por Coluna
+  const sortedItems = [...filteredItems].sort((a, b) => {
+    let aVal = a[sortConfig.key] || '';
+    let bVal = b[sortConfig.key] || '';
+
+    if (sortConfig.key === 'data_abertura') {
+      aVal = a.data_abertura || a.createdAt || '';
+      bVal = b.data_abertura || b.createdAt || '';
+    }
+
+    if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+    if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+
+    if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  // 3. Paginação (Limites de 10 por página)
+  const totalPages = Math.ceil(sortedItems.length / itemsPerPage) || 1;
+  const paginatedItems = sortedItems.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const clearFilters = () => {
+    setFilterStatus([]);
+    setFilterProfat('');
+    setFilterSistema('Todos');
+    setFilterChamado('');
+    setFilterDateStart('');
+    setFilterDateEnd('');
+    setShowHistory(false);
+    setSortConfig({ key: 'data_abertura', direction: 'desc' });
+  };
+
+  const totalPendenciasGeral = dashStats.criticas.pendente + dashStats.sem_valor.pendente + dashStats.sem_tuss.pendente + dashStats.chamados.pendente;
+  const totalEmAndamentoGeral = dashStats.criticas.andamento + dashStats.sem_valor.andamento + dashStats.sem_tuss.andamento + dashStats.chamados.andamento;
+  const totalConcluidosGeral = dashStats.criticas.concluido + dashStats.sem_valor.concluido + dashStats.sem_tuss.concluido + dashStats.chamados.concluido;
+
   return (
-    <div className={`min-h-screen ${t.app} transition-colors duration-200 font-sans`}>
-
-      {/* HEADER PRINCIPAL */}
-      <header className={`border-b ${t.header} px-4 md:px-6 py-4 flex flex-wrap justify-between items-center gap-4 sticky top-0 z-30 backdrop-blur-md`}>
+    <div className="flex h-screen bg-slate-100 text-slate-800 font-sans">
+      {/* Sidebar Lateral */}
+      <aside className="w-64 bg-emerald-950 text-white flex flex-col justify-between shadow-xl flex-shrink-0">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            Planner Flavia
-            <span className="text-xs bg-lime-500/10 text-lime-500 px-2 py-0.5 rounded border border-lime-500/20 font-mono">v2.5 Pro</span>
-          </h1>
-          <p className={`text-xs ${t.muted}`}>Agenda, Documentações & Gestão de Projetos</p>
-        </div>
-
-        {/* NAVEGAÇÃO POR ABAS */}
-        <nav className={`flex p-1 rounded-lg border text-xs overflow-x-auto max-w-full ${t.tabs}`}>
-          {[
-            ['dashboard', 'Dashboard', LayoutDashboard],
-            ['compromissos', 'Compromissos & Prazos', CalendarIcon],
-            ['notas', 'Notas & Sistemas', FileText],
-            ['matriz', 'Matriz de Projetos', BarChart2]
-          ].map(([id, rotulo, Icone]) => (
-            <button
-              key={id}
-              onClick={() => setActiveTab(id)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition whitespace-nowrap ${activeTab === id ? 'bg-lime-500 text-slate-950 font-bold' : t.tabOff}`}
-            >
-              <Icone className="w-4 h-4" /> {rotulo}
-            </button>
-          ))}
-        </nav>
-
-        {/* BARRA DE FERRAMENTAS */}
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="relative flex-1 md:flex-none min-w-0">
-            <Search className={`w-4 h-4 absolute left-3 top-2.5 ${t.faint}`} />
-            <input
-              type="text"
-              placeholder="Buscar tudo..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full md:w-48 pl-9 pr-3 py-1.5 rounded-lg text-xs border focus:outline-none focus:border-lime-500 ${t.input}`}
+          <div className="p-6 border-b border-emerald-900 flex flex-col items-start gap-2">
+            <img 
+              src="/logo-unimed.png" 
+              alt="Unimed Caruaru" 
+              className="h-10 w-auto object-contain mb-1"
+              onError={(e) => { e.target.style.display = 'none'; }} 
             />
+            <h1 className="text-xl font-bold text-emerald-400 flex items-center gap-2">
+              <ShieldAlert className="w-6 h-6 text-emerald-400" /> Faturamento
+            </h1>
+            <p className="text-xs text-emerald-200/70 font-medium">Painel Operacional e Chamados Internos</p>
           </div>
 
-          <button
-            onClick={() => setIsDarkMode(!isDarkMode)}
-            className={`p-2 rounded-lg border transition ${t.iconBtn}`}
-            title={isDarkMode ? 'Tema claro' : 'Tema escuro'}
-          >
-            {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
-          </button>
+          <div className="p-4 border-b border-emerald-900/50">
+            <button
+              onClick={toggleNotifications}
+              className={`w-full text-xs font-semibold px-3 py-2 rounded-lg flex items-center justify-center gap-2 transition ${
+                notificationsEnabled 
+                  ? 'bg-emerald-800 text-emerald-200 border border-emerald-700' 
+                  : 'bg-emerald-900/80 hover:bg-emerald-800 text-emerald-300 border border-emerald-800'
+              }`}
+            >
+              {notificationsEnabled ? <BellRing className="w-4 h-4 text-emerald-300 animate-pulse" /> : <Bell className="w-4 h-4" />}
+              {notificationsEnabled ? 'Alertas Ativos' : 'Ativar Alerta de Demandas'}
+            </button>
+          </div>
 
-          <button
-            onClick={() => abrirModal(kindDoTab)}
-            className="flex items-center gap-1.5 bg-lime-500 hover:bg-lime-400 text-slate-950 text-xs font-bold px-3 py-2 rounded-lg transition shadow-lg shadow-lime-500/10 whitespace-nowrap"
-          >
-            <Plus className="w-4 h-4" />
-            {kindDoTab === 'nota' ? 'Nova Nota' : kindDoTab === 'projeto' ? 'Novo Projeto' : 'Novo Compromisso'}
-          </button>
+          <nav className="p-4 space-y-2">
+            <button
+              onClick={() => { setActiveTab('inicio'); clearFilters(); }}
+              className={`w-full flex items-center justify-between p-3 rounded-lg text-sm font-medium transition ${
+                activeTab === 'inicio' ? 'bg-emerald-600 text-white shadow' : 'text-emerald-100 hover:bg-emerald-900'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Home className="w-5 h-5 text-emerald-300" />
+                <span>Página Principal</span>
+              </div>
+              <ChevronRight className="w-4 h-4 opacity-50" />
+            </button>
+
+            <button
+              onClick={() => { setActiveTab('criticas'); clearFilters(); }}
+              className={`w-full flex items-center justify-between p-3 rounded-lg text-sm font-medium transition ${
+                activeTab === 'criticas' ? 'bg-emerald-600 text-white shadow' : 'text-emerald-100 hover:bg-emerald-900'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-400" />
+                <span>Críticas e Erros (NTI)</span>
+              </div>
+              <ChevronRight className="w-4 h-4 opacity-50" />
+            </button>
+
+            <button
+              onClick={() => { setActiveTab('sem_valor'); clearFilters(); }}
+              className={`w-full flex items-center justify-between p-3 rounded-lg text-sm font-medium transition ${
+                activeTab === 'sem_valor' ? 'bg-emerald-600 text-white shadow' : 'text-emerald-100 hover:bg-emerald-900'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Clock className="w-5 h-5 text-emerald-300" />
+                <span>Proced. Sem Valor</span>
+              </div>
+              <ChevronRight className="w-4 h-4 opacity-50" />
+            </button>
+
+            <button
+              onClick={() => { setActiveTab('sem_tuss'); clearFilters(); }}
+              className={`w-full flex items-center justify-between p-3 rounded-lg text-sm font-medium transition ${
+                activeTab === 'sem_tuss' ? 'bg-emerald-600 text-white shadow' : 'text-emerald-100 hover:bg-emerald-900'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <FileCode className="w-5 h-5 text-emerald-400" />
+                <span>Proced. Sem TUSS</span>
+              </div>
+              <ChevronRight className="w-4 h-4 opacity-50" />
+            </button>
+
+            <button
+              onClick={() => { setActiveTab('chamados'); clearFilters(); }}
+              className={`w-full flex items-center justify-between p-3 rounded-lg text-sm font-medium transition ${
+                activeTab === 'chamados' ? 'bg-emerald-600 text-white shadow' : 'text-emerald-100 hover:bg-emerald-900'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <MessageSquare className="w-5 h-5 text-emerald-300" />
+                <span>Chamados Internos</span>
+              </div>
+              <ChevronRight className="w-4 h-4 opacity-50" />
+            </button>
+          </nav>
         </div>
-      </header>
 
-      {/* CONTEÚDO PRINCIPAL */}
-      <main className="p-4 md:p-6">
+        <div className="p-4 border-t border-emerald-900 text-xs text-emerald-400/60 text-center font-medium">
+          Unimed Caruaru • Faturamento
+        </div>
+      </aside>
 
-        {/* ==================== ABA 1: DASHBOARD ==================== */}
-        {activeTab === 'dashboard' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-            {/* CALENDÁRIO */}
-            <section className={`lg:col-span-2 border rounded-xl p-4 md:p-6 shadow-xl ${t.card}`}>
-
-              {/* Cabeçalho: setas + título + legenda */}
-              <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => navegar(-1)}
-                    className={`p-1.5 rounded-lg border transition ${t.iconBtn}`}
-                    title={calendarView === 'ano' ? 'Ano anterior' : 'Mês anterior'}
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <h2 className="text-base sm:text-lg font-semibold flex items-center justify-center gap-2 whitespace-nowrap sm:min-w-[12rem]">
-                    <CalendarIcon className={`w-5 h-5 ${t.accent}`} />
-                    {calendarView === 'ano' ? year : `${MESES[month]} de ${year}`}
-                  </h2>
-                  <button
-                    onClick={() => navegar(1)}
-                    className={`p-1.5 rounded-lg border transition ${t.iconBtn}`}
-                    title={calendarView === 'ano' ? 'Próximo ano' : 'Próximo mês'}
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                  <button onClick={irParaHoje} className={`text-xs px-2.5 py-1.5 rounded-lg border transition ${t.iconBtn}`}>
-                    Hoje
-                  </button>
+      {/* Conteúdo Principal */}
+      <main className="flex-1 flex flex-col overflow-hidden min-w-0">
+        
+        {/* PÁGINA PRINCIPAL */}
+        {activeTab === 'inicio' ? (
+          <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-slate-50">
+            <div className="bg-gradient-to-r from-emerald-900 to-emerald-800 rounded-2xl p-8 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="space-y-3 max-w-2xl">
+                <div className="inline-flex items-center gap-2 bg-emerald-700/50 px-3 py-1 rounded-full text-xs font-semibold text-emerald-200 border border-emerald-600">
+                  <ShieldAlert className="w-4 h-4 text-emerald-300" /> Gestão Integrada do Faturamento
                 </div>
-
-                {/* LEGENDA DE CORES */}
-                <div className="flex flex-wrap gap-3 text-xs">
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-lime-400"></span> Trabalho</span>
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500"></span> Saúde/Ausência</span>
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-orange-400"></span> Prazo</span>
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-yellow-400"></span> Feriado</span>
-                  <span className="flex items-center gap-1"><StickyNote className="w-3 h-3 text-amber-400" /> Informações</span>
-                </div>
+                <h1 className="text-3xl font-extrabold tracking-tight">Painel Operacional & Chamados Internos</h1>
+                <p className="text-emerald-100/90 text-sm leading-relaxed">
+                  Bem-vindo à central de inteligência e acompanhamento do Faturamento da Unimed Caruaru.
+                </p>
               </div>
-
-              {/* Filtro: Dia / Mês / Ano */}
-              <div className={`flex flex-wrap items-center gap-2 mb-4 p-2 rounded-lg border text-xs ${t.sub}`}>
-                <span className={`font-semibold ${t.muted}`}>Buscar por:</span>
-                <div className={`flex p-0.5 rounded-md border ${t.tabs}`}>
-                  {[['dia', 'Dia'], ['mes', 'Mês'], ['ano', 'Ano']].map(([valor, rotulo]) => (
-                    <button
-                      key={valor}
-                      onClick={() => trocarFiltro(valor)}
-                      className={`px-3 py-1 rounded transition ${filtroModo === valor ? 'bg-lime-500 text-slate-950 font-bold' : t.tabOff}`}
-                    >
-                      {rotulo}
-                    </button>
-                  ))}
-                </div>
-
-                {filtroModo === 'dia' && (
-                  <input
-                    type="date"
-                    value={selectedDay}
-                    onChange={(e) => irParaDia(e.target.value)}
-                    className={`px-2 py-1 rounded border focus:outline-none focus:border-lime-500 ${t.input}`}
-                  />
-                )}
-
-                {filtroModo === 'mes' && (
-                  <select
-                    value={month}
-                    onChange={(e) => setViewDate((v) => ({ ...v, month: Number(e.target.value) }))}
-                    className={`px-2 py-1 rounded border focus:outline-none focus:border-lime-500 ${t.input}`}
-                  >
-                    {MESES.map((nome, i) => <option key={nome} value={i}>{nome}</option>)}
-                  </select>
-                )}
-
-                {filtroModo !== 'dia' && (
-                  <select
-                    value={year}
-                    onChange={(e) => setViewDate((v) => ({ ...v, year: Number(e.target.value) }))}
-                    className={`px-2 py-1 rounded border focus:outline-none focus:border-lime-500 ${t.input}`}
-                  >
-                    {anos.map((a) => <option key={a} value={a}>{a}</option>)}
-                  </select>
-                )}
-
-                <span className={`text-[11px] sm:ml-auto ${t.faint}`}>
-                  {calendarView === 'ano'
-                    ? 'Clique num mês ou num dia para abrir.'
-                    : 'Clique num dia para ver os detalhes; use o + para agendar.'}
-                </span>
+              <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/10 text-center min-w-[220px]">
+                <img src="/logo-unimed.png" alt="Unimed Caruaru" className="h-12 mx-auto mb-2 object-contain filter drop-shadow" onError={(e) => e.target.style.display = 'none'} />
+                <span className="text-xs font-bold text-emerald-200 block uppercase tracking-wider">Unimed Caruaru</span>
               </div>
+            </div>
 
-              {/* ---------- VISÃO MENSAL ---------- */}
-              {calendarView === 'mes' && (
-                <>
-                  <div className={`grid grid-cols-7 gap-1.5 text-center text-xs font-bold mb-2 ${t.muted}`}>
-                    {DIAS_SEMANA.map((d) => <span key={d}>{d}</span>)}
-                  </div>
+            {/* DASHBOARD EM TEMPO REAL */}
+            <div className="space-y-4">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-emerald-600" /> Status Geral das Demandas (Tempo Real)
+              </h2>
 
-                  <div className="grid grid-cols-7 gap-1.5">
-                    {Array.from({ length: totalCelulas }).map((_, idx) => {
-                      const dia = idx - primeiroDiaSemana + 1;
-                      if (dia < 1 || dia > diasNoMes) {
-                        return <div key={`vazio-${idx}`} className={`h-20 md:h-24 rounded-lg ${t.cellPad}`} />;
-                      }
-
-                      const ds = montarData(year, month, dia);
-                      const lista = itensPorDia[ds] || [];
-                      const ehHoje = ds === hoje;
-                      const ehSelecionado = ds === selectedDay;
-
-                      return (
-                        <div
-                          key={ds}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => setSelectedDay(ds)}
-                          onKeyDown={(e) => e.key === 'Enter' && setSelectedDay(ds)}
-                          className={`group h-20 md:h-24 rounded-lg p-1.5 border flex flex-col gap-1 cursor-pointer transition-all hover:border-lime-400/60 ${
-                            ehHoje ? 'border-lime-500 bg-lime-500/10' : t.cell
-                          } ${ehSelecionado ? 'ring-2 ring-lime-400/70' : ''}`}
-                        >
-                          <div className="flex justify-between items-center">
-                            <span className={`text-xs font-bold ${ehHoje ? t.accent : t.dayNum}`}>{dia}</span>
-                            <div className="flex items-center gap-0.5">
-                              {infoDias[ds] && <StickyNote className="w-3 h-3 text-amber-400" />}
-                              <button
-                                type="button"
-                                title="Novo compromisso neste dia"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedDay(ds);
-                                  abrirModal('compromisso', { date: ds });
-                                }}
-                                className={`p-0.5 rounded hover:bg-lime-500/20 transition ${ehSelecionado ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
-                              >
-                                <Plus className={`w-3 h-3 ${t.accent}`} />
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* MARCADORES DE EVENTO */}
-                          <div className="flex flex-col gap-0.5 overflow-hidden">
-                            {lista.slice(0, 2).map((item) => (
-                              <div
-                                key={`${item.source}-${item.id}`}
-                                onClick={(e) => { e.stopPropagation(); setSelectedEventDetails(item); }}
-                                title={item.title}
-                                className={`text-[9px] px-1 py-0.5 rounded truncate font-medium hover:opacity-90 ${corDoItem(item).solid} ${item.status === 'Concluído' ? 'opacity-50 line-through' : ''}`}
-                              >
-                                {item.time ? `${item.time} ` : ''}{item.title}
-                              </div>
-                            ))}
-                            {lista.length > 2 && (
-                              <span className={`text-[9px] font-semibold ${t.muted}`}>+{lista.length - 2} mais</span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
-
-              {/* ---------- VISÃO ANUAL ---------- */}
-              {calendarView === 'ano' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {MESES.map((nomeMes, m) => {
-                    const dias = new Date(year, m + 1, 0).getDate();
-                    const inicio = new Date(year, m, 1).getDay();
-                    const prefixo = `${year}-${pad2(m + 1)}-`;
-                    const total = Object.keys(itensPorDia)
-                      .filter((k) => k.startsWith(prefixo))
-                      .reduce((soma, k) => soma + itensPorDia[k].length, 0);
-
-                    return (
-                      <div key={nomeMes} className={`border rounded-lg p-3 ${t.sub}`}>
-                        <button
-                          onClick={() => abrirMesNaVisaoAnual(m)}
-                          className="w-full flex justify-between items-center mb-2 text-xs font-semibold hover:text-lime-500 transition"
-                        >
-                          <span>{nomeMes}</span>
-                          {total > 0 && (
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${t.chip}`}>
-                              {total} {total === 1 ? 'item' : 'itens'}
-                            </span>
-                          )}
-                        </button>
-                        <div className="grid grid-cols-7 gap-0.5 text-center text-[10px]">
-                          {DIAS_SEMANA.map((d) => <span key={d} className={t.faint}>{d[0]}</span>)}
-                          {Array.from({ length: inicio }).map((_, i) => <span key={`p-${i}`} />)}
-                          {Array.from({ length: dias }, (_, i) => i + 1).map((dia) => {
-                            const ds = montarData(year, m, dia);
-                            const lista = itensPorDia[ds] || [];
-                            return (
-                              <button
-                                key={ds}
-                                onClick={() => { irParaDia(ds); setFiltroModo('dia'); }}
-                                title={lista.length ? lista.map((i) => i.title).join(' • ') : formatarDataBR(ds)}
-                                className={`relative h-6 rounded transition ${t.dayHover} ${
-                                  ds === hoje ? `ring-1 ring-lime-500 font-bold ${t.accent}` : ''
-                                } ${ds === selectedDay ? 'bg-lime-500/20' : ''}`}
-                              >
-                                {dia}
-                                {lista.length > 0 && (
-                                  <span className={`absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full ${corDoItem(lista[0]).dot}`} />
-                                )}
-                                {infoDias[ds] && (
-                                  <span className="absolute top-0.5 right-0.5 w-1 h-1 rounded-full bg-amber-400" />
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </section>
-
-            {/* PAINEL LATERAL */}
-            <div className="space-y-6">
-
-              {/* DIA SELECIONADO + INFORMAÇÕES */}
-              <section className={`border rounded-xl p-5 shadow-xl ${t.card}`}>
-                <div className="flex justify-between items-start gap-2 mb-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div className="bg-white p-5 rounded-2xl border border-amber-200 shadow-sm flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-semibold flex items-center gap-2">
-                      <CalendarIcon className={`w-4 h-4 ${t.accent}`} /> Dia selecionado
-                    </h3>
-                    <p className={`text-xs ${t.muted}`}>{formatarDataExtenso(selectedDay)}</p>
+                    <span className="text-xs font-bold text-amber-700 uppercase tracking-wider block">Total Pendências</span>
+                    <span className="text-3xl font-extrabold text-amber-950">{totalPendenciasGeral}</span>
+                    <span className="text-xs text-slate-500 block mt-1">Aguardando atendimento</span>
                   </div>
-                  <button
-                    onClick={() => abrirModal('compromisso', { date: selectedDay })}
-                    className="flex items-center gap-1 bg-lime-500 hover:bg-lime-400 text-slate-950 text-[11px] font-bold px-2 py-1 rounded-md transition"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Agendar
+                  <div className="p-3 bg-amber-50 text-amber-600 rounded-xl border border-amber-200">
+                    <Clock className="w-7 h-7" />
+                  </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-2xl border border-blue-200 shadow-sm flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-blue-700 uppercase tracking-wider block">Em Andamento</span>
+                    <span className="text-3xl font-extrabold text-blue-950">{totalEmAndamentoGeral}</span>
+                    <span className="text-xs text-slate-500 block mt-1">Em tratativa técnica</span>
+                  </div>
+                  <div className="p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-200">
+                    <Activity className="w-7 h-7" />
+                  </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-2xl border border-emerald-200 shadow-sm flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider block">Concluídos (Histórico)</span>
+                    <span className="text-3xl font-extrabold text-emerald-950">{totalConcluidosGeral}</span>
+                    <span className="text-xs text-slate-500 block mt-1">Demandas finalizadas</span>
+                  </div>
+                  <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-200">
+                    <CheckCircle className="w-7 h-7" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Detalhamento por Módulo */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-2">
+                  <div className="flex justify-between items-center border-b pb-2">
+                    <span className="font-bold text-xs text-slate-800">Críticas e Erros (Chamados NTI)</span>
+                    <span className="text-xs font-mono font-bold bg-slate-100 px-2 py-0.5 rounded">{dashStats.criticas.total} total</span>
+                  </div>
+                  <div className="text-xs space-y-1 text-slate-600">
+                    <div className="flex justify-between"><span>Pendentes:</span> <strong className="text-amber-600">{dashStats.criticas.pendente}</strong></div>
+                    <div className="flex justify-between"><span>Em Andamento:</span> <strong className="text-blue-600">{dashStats.criticas.andamento}</strong></div>
+                    <div className="flex justify-between"><span>Aguardando TI:</span> <strong className="text-purple-600">{dashStats.criticas.aguardandoTi}</strong></div>
+                    <div className="flex justify-between"><span>Concluídos:</span> <strong className="text-emerald-600">{dashStats.criticas.concluido}</strong></div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-2">
+                  <div className="flex justify-between items-center border-b pb-2">
+                    <span className="font-bold text-xs text-slate-800">Proced. Sem Valor (SLA 48h)</span>
+                    <span className="text-xs font-mono font-bold bg-slate-100 px-2 py-0.5 rounded">{dashStats.sem_valor.total} total</span>
+                  </div>
+                  <div className="text-xs space-y-1 text-slate-600">
+                    <div className="flex justify-between"><span>Pendentes:</span> <strong className="text-amber-600">{dashStats.sem_valor.pendente}</strong></div>
+                    <div className="flex justify-between"><span>SLA Estourado (+48h):</span> <strong className="text-red-600">{dashStats.sem_valor.slaEstourado}</strong></div>
+                    <div className="flex justify-between"><span>Concluídos:</span> <strong className="text-emerald-600">{dashStats.sem_valor.concluido}</strong></div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-2">
+                  <div className="flex justify-between items-center border-b pb-2">
+                    <span className="font-bold text-xs text-slate-800">Proced. Sem TUSS (SLA 24h)</span>
+                    <span className="text-xs font-mono font-bold bg-slate-100 px-2 py-0.5 rounded">{dashStats.sem_tuss.total} total</span>
+                  </div>
+                  <div className="text-xs space-y-1 text-slate-600">
+                    <div className="flex justify-between"><span>Pendentes:</span> <strong className="text-amber-600">{dashStats.sem_tuss.pendente}</strong></div>
+                    <div className="flex justify-between"><span>SLA Estourado (+24h):</span> <strong className="text-red-600">{dashStats.sem_tuss.slaEstourado}</strong></div>
+                    <div className="flex justify-between"><span>Concluídos:</span> <strong className="text-emerald-600">{dashStats.sem_tuss.concluido}</strong></div>
+                  </div>
+                </div>
+
+                <div className="bg-emerald-50/70 p-4 rounded-xl border border-emerald-300 shadow-sm space-y-2">
+                  <div className="flex justify-between items-center border-b border-emerald-200 pb-2">
+                    <span className="font-bold text-xs text-emerald-900 flex items-center gap-1">
+                      <MessageSquare className="w-3.5 h-3.5 text-emerald-600" /> Chamados Internos
+                    </span>
+                    <span className="text-xs font-mono font-bold bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded">{dashStats.chamados.total} total</span>
+                  </div>
+                  <div className="text-xs space-y-1 text-slate-700">
+                    <div className="flex justify-between"><span>Pendentes:</span> <strong className="text-amber-700">{dashStats.chamados.pendente}</strong></div>
+                    <div className="flex justify-between"><span>Alta Prioridade:</span> <strong className="text-red-600">{dashStats.chamados.altaPrioridade}</strong></div>
+                    <div className="flex justify-between"><span>Concluídos:</span> <strong className="text-emerald-700">{dashStats.chamados.concluido}</strong></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Atalhos Rápidos */}
+            <div>
+              <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <ArrowRight className="w-5 h-5 text-emerald-600" /> Módulos Operacionais
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                <div onClick={() => setActiveTab('criticas')} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-500 transition cursor-pointer group flex flex-col justify-between">
+                  <div>
+                    <div className="w-12 h-12 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <AlertTriangle className="w-6 h-6 text-amber-600" />
+                    </div>
+                    <h3 className="font-bold text-slate-800 text-lg group-hover:text-emerald-700 transition">Críticas e Erros (NTI)</h3>
+                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">Acompanhamento ativo e biblioteca de consulta de chamados NTI.</p>
+                  </div>
+                  <span className="text-xs font-bold text-emerald-600 mt-4 flex items-center gap-1 group-hover:underline">Acessar Módulo <ChevronRight className="w-3.5 h-3.5" /></span>
+                </div>
+
+                <div onClick={() => setActiveTab('sem_valor')} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-500 transition cursor-pointer group flex flex-col justify-between">
+                  <div>
+                    <div className="w-12 h-12 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <Clock className="w-6 h-6 text-emerald-600" />
+                    </div>
+                    <h3 className="font-bold text-slate-800 text-lg group-hover:text-emerald-700 transition">Proced. Sem Valor</h3>
+                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">Procedimentos sem precificação com alerta de SLA de 48 horas.</p>
+                  </div>
+                  <span className="text-xs font-bold text-emerald-600 mt-4 flex items-center gap-1 group-hover:underline">Acessar Módulo <ChevronRight className="w-3.5 h-3.5" /></span>
+                </div>
+
+                <div onClick={() => setActiveTab('sem_tuss')} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-500 transition cursor-pointer group flex flex-col justify-between">
+                  <div>
+                    <div className="w-12 h-12 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <FileCode className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <h3 className="font-bold text-slate-800 text-lg group-hover:text-emerald-700 transition">Proced. Sem TUSS</h3>
+                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">Depara de códigos PROFAT com tabelas XML, TUSS, Mat./Med. e SLA 24h.</p>
+                  </div>
+                  <span className="text-xs font-bold text-emerald-600 mt-4 flex items-center gap-1 group-hover:underline">Acessar Módulo <ChevronRight className="w-3.5 h-3.5" /></span>
+                </div>
+
+                <div onClick={() => setActiveTab('chamados')} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-500 transition cursor-pointer group flex flex-col justify-between">
+                  <div>
+                    <div className="w-12 h-12 rounded-lg bg-purple-50 border border-purple-200 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <MessageSquare className="w-6 h-6 text-purple-600" />
+                    </div>
+                    <h3 className="font-bold text-slate-800 text-lg group-hover:text-emerald-700 transition">Chamados Internos</h3>
+                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">Central de chamados da equipe com código único e suporte a anexos.</p>
+                  </div>
+                  <span className="text-xs font-bold text-emerald-600 mt-4 flex items-center gap-1 group-hover:underline">Acessar Módulo <ChevronRight className="w-3.5 h-3.5" /></span>
+                </div>
+              </div>
+            </div>
+
+            {/* Canal de Sugestões / Feedback */}
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm max-w-3xl">
+              <div className="flex items-center gap-3 border-b pb-4 mb-4">
+                <div className="p-3 bg-emerald-100 text-emerald-800 rounded-xl">
+                  <Mail className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800">Canal de Sugestões, Críticas e Elogios</h3>
+                  <p className="text-xs text-slate-500">Envie suas observações diretamente para a liderança de faturamento.</p>
+                </div>
+              </div>
+
+              {feedbackEnviado && (
+                <div className="mb-4 p-3 bg-emerald-100 border border-emerald-300 text-emerald-800 rounded-lg text-xs font-semibold">
+                  ✓ Abrindo janela de e-mail no Gmail para Flávia Albuquerque!
+                </div>
+              )}
+
+              <form onSubmit={handleSendFeedback} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Seu Nome *</label>
+                    <input required type="text" value={feedback.nome} onChange={(e) => setFeedback({ ...feedback, nome: e.target.value })} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Nome completo" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Seu E-mail *</label>
+                    <input required type="email" value={feedback.email} onChange={(e) => setFeedback({ ...feedback, email: e.target.value })} className="w-full border p-2.5 rounded-lg text-sm" placeholder="seu.email@hospitalunimedcaruaru.com.br" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Tipo *</label>
+                    <select value={feedback.tipo} onChange={(e) => setFeedback({ ...feedback, tipo: e.target.value })} className="w-full border p-2.5 rounded-lg text-sm bg-white">
+                      <option value="Sugestão de Melhoria">Sugestão de Melhoria</option>
+                      <option value="Crítica">Crítica</option>
+                      <option value="Elogio">Elogio</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Sua Mensagem *</label>
+                  <textarea required rows="3" value={feedback.mensagem} onChange={(e) => setFeedback({ ...feedback, mensagem: e.target.value })} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Escreva aqui..."></textarea>
+                </div>
+
+                <div className="flex justify-between items-center pt-2">
+                  <span className="text-xs text-slate-400">Destinatário: flavia.albuquerque@hospitalunimedcaruaru.com.br</span>
+                  <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm px-5 py-2.5 rounded-lg shadow flex items-center gap-2 transition">
+                    <Send className="w-4 h-4" /> Enviar no Gmail
                   </button>
                 </div>
-
-                <div className="space-y-1.5 mb-4 max-h-40 overflow-y-auto">
-                  {itensDoDiaSelecionado.length === 0 ? (
-                    <p className={`text-xs ${t.faint}`}>Nada agendado para este dia.</p>
-                  ) : (
-                    itensDoDiaSelecionado.map((item) => (
-                      <button
-                        key={`${item.source}-${item.id}`}
-                        onClick={() => setSelectedEventDetails(item)}
-                        className={`w-full text-left p-2 rounded-lg border text-xs flex items-center gap-2 transition ${t.sub} ${t.subHover}`}
-                      >
-                        <span className={`w-2 h-2 rounded-full shrink-0 ${corDoItem(item).dot}`} />
-                        {item.time && <span className={`font-mono ${t.muted}`}>{item.time}</span>}
-                        <span className={`truncate flex-1 ${item.status === 'Concluído' ? 'line-through opacity-60' : ''}`}>{item.title}</span>
-                      </button>
-                    ))
-                  )}
-                </div>
-
-                <label className="text-xs font-semibold mb-1 flex items-center gap-1.5">
-                  <StickyNote className="w-3.5 h-3.5 text-amber-400" /> Informações do dia
-                </label>
-                <textarea
-                  rows="4"
-                  value={infoDoDia}
-                  onChange={(e) => atualizarInfoDia(e.target.value)}
-                  placeholder="Anote aqui o que for necessário para este dia: lembretes, pendências, contatos..."
-                  className={`w-full p-2.5 rounded-lg border text-xs focus:outline-none focus:border-lime-500 ${t.input}`}
-                />
-                <p className={`text-[10px] mt-1 ${t.faint}`}>Salvo automaticamente.</p>
-              </section>
-
-              {/* E-MAILS NÃO LIDOS */}
-              <section className={`border rounded-xl p-5 shadow-xl ${t.card}`}>
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-sm font-semibold flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-sky-400" /> E-mails Não Lidos (Gmail)
-                  </h3>
-                  <span className="bg-sky-500/20 text-sky-500 text-xs px-2 py-0.5 rounded-full font-bold">
-                    {unreadCount}
-                  </span>
-                </div>
-
-                <div className="space-y-2.5 max-h-48 overflow-y-auto">
-                  {loadingGoogle ? (
-                    <p className={`text-xs ${t.faint}`}>Sincronizando com Gmail...</p>
-                  ) : erroGmail ? (
-                    <p className="text-xs text-red-400 flex items-center gap-1.5">
-                      <AlertCircle className="w-3.5 h-3.5" /> Não foi possível conectar ao Gmail.
-                    </p>
-                  ) : emails.length === 0 ? (
-                    <p className={`text-xs ${t.faint}`}>Nenhum e-mail pendente!</p>
-                  ) : (
-                    emails.map((email) => (
-                      <div key={email.id} className={`p-2.5 rounded-lg border text-xs ${t.sub}`}>
-                        <p className={`font-semibold truncate ${t.body}`}>{email.from}</p>
-                        <p className="text-sky-500 truncate font-medium">{email.subject}</p>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </section>
-
-              {/* AÇÕES RÁPIDAS (próximos pendentes) */}
-              <section className={`border rounded-xl p-5 shadow-xl ${t.card}`}>
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <CheckSquare className={`w-4 h-4 ${t.accent}`} /> Ações Rápidas
-                </h3>
-                <div className="space-y-2">
-                  {proximasTarefas.length === 0 && <p className={`text-xs ${t.faint}`}>Tudo em dia!</p>}
-                  {proximasTarefas.map((tarefa) => {
-                    const atrasada = tarefa.date < hoje;
-                    return (
-                      <div key={tarefa.id} className={`p-2 rounded border text-xs flex items-center gap-2 ${t.sub}`}>
-                        <button
-                          onClick={() => alternarStatusTarefa(tarefa.id)}
-                          title="Marcar como concluído"
-                          className="w-4 h-4 rounded border border-slate-500 hover:border-lime-400 shrink-0"
-                        />
-                        <button onClick={() => setSelectedEventDetails({ ...tarefa, source: 'local' })} className="truncate flex-1 text-left hover:underline">
-                          {tarefa.title}
-                        </button>
-                        <span className={`text-[10px] shrink-0 ${atrasada ? 'text-red-400 font-semibold' : t.faint}`}>
-                          {atrasada ? 'Atrasado' : formatarDataBR(tarefa.date).slice(0, 5)}
-                        </span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded shrink-0 ${t.chip}`}>{tarefa.priority}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-
+              </form>
             </div>
           </div>
-        )}
-
-        {/* ==================== ABA 2: COMPROMISSOS & PRAZOS ==================== */}
-        {activeTab === 'compromissos' && (
-          <section className={`border rounded-xl p-4 md:p-6 ${t.card}`}>
-            <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
+        ) : (
+          /* TABELAS E FILTROS */
+          <>
+            <header className="bg-white border-b px-8 py-5 flex justify-between items-center shadow-sm flex-shrink-0">
               <div>
-                <h2 className="text-lg font-bold">Compromissos, Reuniões & Prazos</h2>
-                <p className={`text-xs ${t.muted}`}>Gerencie todas as datas de entrega, reuniões e exames em um só lugar.</p>
+                <h2 className="text-2xl font-bold text-slate-800">
+                  {activeTab === 'criticas' && 'Gestão de Críticas e Erros (Chamados NTI)'}
+                  {activeTab === 'sem_valor' && 'Procedimentos Sem Valor (Alerta SLA 48h)'}
+                  {activeTab === 'sem_tuss' && 'Procedimentos Sem TUSS (Alerta SLA 24h & Mat./Med.)'}
+                  {activeTab === 'chamados' && 'Central de Chamados e Suporte Interno'}
+                </h2>
+                <p className="text-sm text-slate-500">
+                  {activeTab === 'criticas' ? 'Acompanhamento dinâmico da operação e biblioteca de busca do NTI' : 
+                   activeTab === 'chamados' ? 'Abertura, controle e acompanhamento de solicitações internas' : 
+                   'Acompanhamento e resolução de pendências do setor'}
+                </p>
               </div>
-              <button onClick={() => abrirModal('compromisso')} className="flex items-center gap-1.5 bg-lime-500 hover:bg-lime-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs">
-                <Plus className="w-4 h-4" /> Adicionar Compromisso
-              </button>
-            </div>
 
-            <div className="space-y-3">
-              {tarefasFiltradas.length === 0 && (
-                <p className={`text-xs ${t.faint}`}>{termo ? 'Nenhum compromisso encontrado para essa busca.' : 'Nenhum compromisso cadastrado.'}</p>
-              )}
-              {tarefasFiltradas.map((tarefa) => {
-                const concluida = tarefa.status === 'Concluído';
-                return (
-                  <div
-                    key={tarefa.id}
-                    className={`p-4 border rounded-lg flex flex-wrap justify-between items-start gap-3 transition ${t.sub} ${t.subHover} ${concluida ? 'opacity-60' : ''}`}
+              <button
+                onClick={handleOpenNewModal}
+                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg shadow font-medium text-sm transition flex-shrink-0"
+              >
+                <PlusCircle className="w-5 h-5" /> {activeTab === 'chamados' ? 'Abrir Novo Chamado' : 'Novo Registro'}
+              </button>
+            </header>
+
+            <div className="p-8 flex-1 overflow-y-auto space-y-6">
+              
+              {/* Filtros e Alternância para Histórico */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                <div className="flex items-center justify-between border-b pb-2">
+                  <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-2">
+                    <Filter className="w-4 h-4 text-emerald-600" /> Filtros e Busca Operacional
+                  </span>
+                  
+                  {/* Botão para Ativar/Desativar Biblioteca de Histórico */}
+                  <button
+                    onClick={() => setShowHistory(!showHistory)}
+                    className={`text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition ${
+                      showHistory 
+                        ? 'bg-amber-100 text-amber-900 border border-amber-300' 
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
+                    }`}
                   >
-                    <div className="flex items-start gap-3 min-w-0 flex-1">
-                      <button
-                        onClick={() => alternarStatusTarefa(tarefa.id)}
-                        title={concluida ? 'Reabrir' : 'Marcar como concluído'}
-                        className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center shrink-0 transition ${
-                          concluida ? 'bg-lime-500 border-lime-500' : 'border-slate-500 hover:border-lime-400'
-                        }`}
-                      >
-                        {concluida && <Check className="w-3.5 h-3.5 text-slate-950" />}
-                      </button>
-                      <div className="space-y-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h4 className={`font-semibold text-sm ${concluida ? 'line-through' : ''}`}>{tarefa.title}</h4>
-                          <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${corDoItem(tarefa).soft}`}>
-                            {tarefa.category}
-                          </span>
-                        </div>
-                        <div className={`flex flex-wrap items-center gap-4 text-xs ${t.muted}`}>
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5" /> {formatarDataBR(tarefa.date)}{tarefa.time ? ` às ${tarefa.time}` : ''}
-                          </span>
-                          {tarefa.meetLink && (
-                            <a href={tarefa.meetLink} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-sky-500 hover:underline">
-                              <Video className="w-3.5 h-3.5" /> Entrar na Reunião
-                            </a>
+                    <History className="w-3.5 h-3.5" />
+                    {showHistory ? 'Exibindo Histórico Completo' : 'Exibir Concluídos / Histórico'}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-1">
+                  
+                  {/* DROPDOWN MÚLTIPLO DE STATUS */}
+                  <div className="relative" ref={statusDropdownRef}>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">
+                      Status {filterStatus.length > 0 && `(${filterStatus.length} selecionados)`}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
+                      className="w-full border p-2 rounded-lg text-sm bg-white flex items-center justify-between text-slate-700 hover:border-emerald-500 transition shadow-sm"
+                    >
+                      <span className="truncate text-xs font-medium">
+                        {filterStatus.length === 0 
+                          ? 'Todos os Status Ativos' 
+                          : `${filterStatus.length} selecionado(s)`}
+                      </span>
+                      <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                    </button>
+
+                    {isStatusDropdownOpen && (
+                      <div className="absolute z-30 mt-1 w-64 bg-white border border-slate-200 rounded-xl shadow-xl p-3 space-y-2 text-xs">
+                        <div className="flex justify-between items-center border-b pb-2 font-semibold text-slate-700">
+                          <span>Filtrar por Status:</span>
+                          {filterStatus.length > 0 && (
+                            <button 
+                              type="button" 
+                              onClick={() => setFilterStatus([])} 
+                              className="text-emerald-700 hover:underline text-[11px] font-bold"
+                            >
+                              Limpar Seleção
+                            </button>
                           )}
                         </div>
-                        {tarefa.description && (
-                          <p className={`text-xs whitespace-pre-line ${t.body}`}>{tarefa.description}</p>
-                        )}
+                        <div className="space-y-1.5 max-h-56 overflow-y-auto">
+                          {STATUS_OPTIONS.map((opt) => (
+                            <label 
+                              key={opt.value} 
+                              className="flex items-center gap-2 p-1.5 hover:bg-slate-50 rounded-lg cursor-pointer text-slate-700 font-medium select-none"
+                            >
+                              <input 
+                                type="checkbox" 
+                                checked={filterStatus.includes(opt.value)} 
+                                onChange={() => toggleStatusFilter(opt.value)}
+                                className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                              />
+                              <span>{opt.label}</span>
+                            </label>
+                          ))}
+                        </div>
                       </div>
+                    )}
+                  </div>
+
+                  {activeTab === 'chamados' ? (
+                    <>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Cód. Chamado / Título</label>
+                        <input type="text" placeholder="Ex: CH-849201" value={filterChamado} onChange={(e) => setFilterChamado(e.target.value)} className="w-full border p-2 rounded-lg text-sm" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Sistema</label>
+                        <select value={filterSistema} onChange={(e) => setFilterSistema(e.target.value)} className="w-full border p-2 rounded-lg text-sm bg-white">
+                          <option value="Todos">Todos os Sistemas</option>
+                          <option value="SoulMV">SoulMV</option>
+                          <option value="EasyAudit">EasyAudit</option>
+                          <option value="SAW">SAW</option>
+                        </select>
+                      </div>
+                    </>
+                  ) : (
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Buscar por Atendimento / Nº NTI / Palavra-Chave</label>
+                      <div className="relative">
+                        <input type="text" placeholder="Digite Nº NTI (ex: 47862) ou palavra..." value={filterProfat} onChange={(e) => setFilterProfat(e.target.value)} className="w-full border p-2 pr-8 rounded-lg text-sm" />
+                        <Search className="w-4 h-4 text-slate-400 absolute right-2.5 top-2.5" />
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Data Inicial</label>
+                    <input type="date" value={filterDateStart} onChange={(e) => setFilterDateStart(e.target.value)} className="w-full border p-2 rounded-lg text-sm" />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Data Final</label>
+                    <input type="date" value={filterDateEnd} onChange={(e) => setFilterDateEnd(e.target.value)} className="w-full border p-2 rounded-lg text-sm" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Tabela de Dados com Rolagem Horizontal Otimizada */}
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+                <table className="w-full text-left text-sm text-slate-600 min-w-[1450px]">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500 font-semibold">
+                    <tr>
+                      <SortableHeader label="Status" sortKey="status" className="min-w-[180px]" />
+                      {activeTab === 'chamados' ? (
+                        <>
+                          <SortableHeader label="Código / Título" sortKey="tituloChamado" className="min-w-[220px]" />
+                          <SortableHeader label="Solicitante / E-mail" sortKey="nomeUsuario" className="min-w-[200px]" />
+                          <SortableHeader label="Sistema / Tipo" sortKey="sistema" className="min-w-[140px]" />
+                          <th className="p-4 whitespace-nowrap min-w-[140px]">Contato</th>
+                          <SortableHeader label="Prioridade" sortKey="prioridade" className="min-w-[120px]" />
+                          <SortableHeader label="Data de Abertura" sortKey="data_abertura" className="min-w-[140px]" />
+                          <th className="p-4 text-center whitespace-nowrap min-w-[110px]">Anexo</th>
+                        </>
+                      ) : (
+                        <>
+                          <SortableHeader label="Atendimento / Nº NTI" sortKey="numChamado" className="min-w-[140px]" />
+                          {activeTab === 'criticas' && (
+                            <>
+                              <SortableHeader label="Crítica / Erro Apresentado" sortKey="criticaErro" className="min-w-[280px]" />
+                              <SortableHeader label="Data de Abertura" sortKey="data_abertura" className="min-w-[130px]" />
+                              <SortableHeader label="Sistema" sortKey="sistema" className="min-w-[120px]" />
+                              <SortableHeader label="Empresa / Convênio" sortKey="empresa" className="min-w-[150px]" />
+                            </>
+                          )}
+                          {activeTab === 'sem_valor' && (
+                            <>
+                              <SortableHeader label="Profat / Descrição" sortKey="descricao" className="min-w-[280px]" />
+                              <SortableHeader label="Tabela" sortKey="tabela" className="min-w-[100px]" />
+                              <SortableHeader label="Data de Abertura" sortKey="data_abertura" className="min-w-[130px]" />
+                              <th className="p-4 whitespace-nowrap min-w-[150px]">Alerta SLA (48h)</th>
+                              <SortableHeader label="Empresa / Convênio" sortKey="empresa" className="min-w-[150px]" />
+                              <th className="p-4 whitespace-nowrap min-w-[120px]">Dt da Conta</th>
+                            </>
+                          )}
+                          {activeTab === 'sem_tuss' && (
+                            <>
+                              <SortableHeader label="Profat / Descrição" sortKey="descricao" className="min-w-[280px]" />
+                              <SortableHeader label="TUSS / Tabela XML" sortKey="tuss" className="min-w-[160px]" />
+                              <SortableHeader label="Data de Abertura" sortKey="data_abertura" className="min-w-[130px]" />
+                              <th className="p-4 whitespace-nowrap min-w-[150px]">Alerta SLA (24h)</th>
+                              <th className="p-4 text-center whitespace-nowrap min-w-[130px]">Foto Mat./Med.</th>
+                              <SortableHeader label="Empresa / Convênio" sortKey="empresa" className="min-w-[150px]" />
+                            </>
+                          )}
+                          <SortableHeader label="Usuário" sortKey="usuario" className="min-w-[120px]" />
+                        </>
+                      )}
+                      <th className="p-4 text-center whitespace-nowrap min-w-[240px]">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {paginatedItems.length === 0 ? (
+                      <tr>
+                        <td colSpan="11" className="p-8 text-center text-slate-400">
+                          Nenhum registro encontrado para os filtros selecionados.
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedItems.map((item) => {
+                        const sla48 = activeTab === 'sem_valor' ? getSLAStatus(item.dtSolicitacao, 48) : null;
+                        const sla24 = activeTab === 'sem_tuss' ? getSLAStatus(item.dtSolicitacao, 24) : null;
+                        const dataExibicao = item.data_abertura || item.dtSolicitacao || item.createdAt;
+
+                        return (
+                          <tr key={item.id} className={`hover:bg-slate-50 transition ${item.status === 'Concluído' ? 'bg-slate-50/50' : ''}`}>
+                            <td className="p-4 whitespace-nowrap">
+                              <select
+                                value={item.status || 'Pendente'}
+                                onChange={(e) => handleStatusChange(item.id, e.target.value)}
+                                className={`text-xs font-semibold px-2.5 py-1 rounded-full border shadow-sm outline-none cursor-pointer ${
+                                  item.status === 'Concluído' ? 'bg-slate-100 text-slate-600 border-slate-300' :
+                                  item.status === 'Em Andamento' || item.status === 'Em andamento' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                  item.status === 'Aguardando TI' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                                  item.status === 'Aguardando Retorno' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                                  item.status === 'Cancelado' ? 'bg-red-50 text-red-700 border-red-200' :
+                                  'bg-amber-50 text-amber-800 border-amber-300'
+                                }`}
+                              >
+                                <option value="Pendente">🟡 Pendente / Aberto</option>
+                                <option value="Em Andamento">🔵 Em Andamento</option>
+                                <option value="Aguardando TI">🟣 Aguardando TI</option>
+                                <option value="Aguardando Retorno">🟠 Aguardando Retorno do Usuário</option>
+                                <option value="Concluído">🟢 Concluído</option>
+                                <option value="Cancelado">⚪ Cancelado</option>
+                              </select>
+                            </td>
+
+                            {activeTab === 'chamados' ? (
+                              <>
+                                <td className="p-4">
+                                  <div className="font-mono text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded w-max mb-1 border border-emerald-200 whitespace-nowrap">
+                                    {item.codChamado}
+                                  </div>
+                                  <div className="font-semibold text-slate-800 text-sm">{item.tituloChamado}</div>
+                                </td>
+                                <td className="p-4">
+                                  <div className="font-medium text-slate-800">{item.nomeSolicitante || item.nomeUsuario}</div>
+                                  <div className="text-xs text-slate-500">{item.emailSolicitante || item.setor}</div>
+                                </td>
+                                <td className="p-4 whitespace-nowrap">
+                                  <span className="font-medium text-slate-700">{item.sistema}</span>
+                                  <span className="text-xs text-slate-500 block">({item.tipoChamado})</span>
+                                </td>
+                                <td className="p-4 text-xs text-slate-600 whitespace-nowrap">
+                                  <div>Chat: {item.chat || '-'}</div>
+                                  <div>Ramal: {item.ramal || '-'}</div>
+                                </td>
+                                <td className="p-4 whitespace-nowrap">
+                                  <span className={`px-2 py-1 text-xs rounded font-bold ${
+                                    item.prioridade === 'Alta' ? 'bg-red-100 text-red-700' :
+                                    item.prioridade === 'Média' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700'
+                                  }`}>
+                                    {item.prioridade || 'Normal'}
+                                  </span>
+                                </td>
+                                <td className="p-4 text-xs font-semibold text-slate-700 whitespace-nowrap">
+                                  {formatDate(dataExibicao)}
+                                </td>
+                                <td className="p-4 text-center whitespace-nowrap">
+                                  {item.anexoUrl ? (
+                                    <button 
+                                      onClick={() => handleOpenAnexo(item)}
+                                      className="inline-flex items-center gap-1 text-xs text-emerald-800 hover:bg-emerald-100 bg-emerald-50 p-1.5 rounded border border-emerald-300 font-semibold transition"
+                                      title={item.anexoNome}
+                                    >
+                                      <Paperclip className="w-3.5 h-3.5 text-emerald-600" /> Ver Anexo
+                                    </button>
+                                  ) : (
+                                    <span className="text-xs text-slate-400">-</span>
+                                  )}
+                                </td>
+                              </>
+                            ) : (
+                              <>
+                                <td className="p-4 font-mono text-xs font-semibold text-slate-700 whitespace-nowrap">
+                                  <div>Atend: {item.codAtendimento || '-'}</div>
+                                  {item.numChamado && (
+                                    <div className="text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 mt-1 w-max font-bold">
+                                      NTI: #{item.numChamado}
+                                    </div>
+                                  )}
+                                </td>
+
+                                {activeTab === 'criticas' && (
+                                  <>
+                                    <td className="p-4 font-medium text-slate-800 leading-relaxed">{item.criticaErro}</td>
+                                    <td className="p-4 text-xs font-semibold text-slate-700 whitespace-nowrap">
+                                      {formatDate(dataExibicao)}
+                                    </td>
+                                    <td className="p-4 whitespace-nowrap">{item.sistema || 'SoulMV'}</td>
+                                    <td className="p-4 whitespace-nowrap">{item.empresa || '-'} / {item.convenio || '-'}</td>
+                                  </>
+                                )}
+
+                                {activeTab === 'sem_valor' && (
+                                  <>
+                                    <td className="p-4 font-medium text-slate-800 leading-relaxed">{item.profat} - {item.descricao}</td>
+                                    <td className="p-4 text-xs font-semibold text-slate-700 whitespace-nowrap">{item.tabela || '-'}</td>
+                                    <td className="p-4 text-xs font-semibold text-slate-700 whitespace-nowrap">
+                                      {formatDate(dataExibicao)}
+                                    </td>
+                                    <td className="p-4 whitespace-nowrap">
+                                      {sla48 && (
+                                        <span className={`px-2.5 py-1 text-xs rounded-md font-semibold border inline-block whitespace-nowrap ${sla48.color}`}>
+                                          {sla48.label}
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="p-4 whitespace-nowrap">{item.empresa} / {item.convenio}</td>
+                                    <td className="p-4 whitespace-nowrap">{item.dtConta}</td>
+                                  </>
+                                )}
+
+                                {activeTab === 'sem_tuss' && (
+                                  <>
+                                    <td className="p-4 font-medium text-slate-800 leading-relaxed">{item.profat} - {item.descricao}</td>
+                                    <td className="p-4 whitespace-nowrap">{item.tuss || 'Sem TUSS'} ({item.tabelaXml || '-'})</td>
+                                    <td className="p-4 text-xs font-semibold text-slate-700 whitespace-nowrap">
+                                      {formatDate(dataExibicao)}
+                                    </td>
+                                    <td className="p-4 whitespace-nowrap">
+                                      {sla24 && (
+                                        <span className={`px-2.5 py-1 text-xs rounded-md font-semibold border inline-block whitespace-nowrap ${sla24.color}`}>
+                                          {sla24.label}
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="p-4 text-center whitespace-nowrap">
+                                      {item.anexoUrl ? (
+                                        <button 
+                                          onClick={() => handleOpenAnexo(item)}
+                                          className="inline-flex items-center gap-1 text-xs text-blue-800 hover:bg-blue-100 bg-blue-50 p-1.5 rounded border border-blue-300 font-semibold transition"
+                                          title={item.anexoNome}
+                                        >
+                                          <ImageIcon className="w-3.5 h-3.5 text-blue-600" /> Ver Foto Mat/Med
+                                        </button>
+                                      ) : (
+                                        <span className="text-xs text-slate-400">-</span>
+                                      )}
+                                    </td>
+                                    <td className="p-4 whitespace-nowrap">{item.empresa} / {item.convenio}</td>
+                                  </>
+                                )}
+
+                                <td className="p-4 text-xs text-slate-500 whitespace-nowrap">{item.usuario || 'Sistema'}</td>
+                              </>
+                            )}
+
+                            <td className="p-4 text-center whitespace-nowrap">
+                              <div className="flex items-center justify-center gap-2">
+                                
+                                {item.status !== 'Concluído' ? (
+                                  <button
+                                    onClick={() => handleOpenConclusionModal(item)}
+                                    className="flex items-center gap-1 text-xs text-emerald-800 hover:text-emerald-950 font-bold bg-emerald-100 hover:bg-emerald-200 px-2.5 py-1.5 rounded transition shadow-sm border border-emerald-300"
+                                    title="Concluir Demanda e Inserir Parecer"
+                                  >
+                                    <CheckSquare className="w-3.5 h-3.5 text-emerald-700" /> Concluir Demanda
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => setViewParecerModal(item)}
+                                    className="flex items-center gap-1 text-xs text-slate-700 hover:text-slate-900 font-bold bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded transition shadow-sm border border-slate-300"
+                                    title="Ver Parecer da Resolução"
+                                  >
+                                    <FileText className="w-3.5 h-3.5 text-slate-600" /> Ver Parecer
+                                  </button>
+                                )}
+
+                                <button 
+                                  onClick={() => handleOpenEditModal(item)}
+                                  className="flex items-center gap-1 text-xs text-amber-700 hover:text-amber-900 font-medium bg-amber-50 hover:bg-amber-100 px-2 py-1.5 rounded transition shadow-sm border border-amber-200"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" /> Editar
+                                </button>
+                                <button 
+                                  onClick={() => handleDeleteItem(item.id)}
+                                  className="flex items-center gap-1 text-xs text-red-700 hover:text-red-900 font-medium bg-red-50 hover:bg-red-100 px-2 py-1.5 rounded transition shadow-sm border border-red-200"
+                                  title="Excluir Registro"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" /> Excluir
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+
+                {/* Barra de Paginação (Limite de 10 linhas) */}
+                {sortedItems.length > 0 && (
+                  <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+                    <div>
+                      Mostrando <span className="font-bold text-slate-800">{((currentPage - 1) * itemsPerPage) + 1}</span> a <span className="font-bold text-slate-800">{Math.min(currentPage * itemsPerPage, sortedItems.length)}</span> de <span className="font-bold text-slate-800">{sortedItems.length}</span> registros
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <span className={`text-xs px-2.5 py-1 rounded ${t.chip}`}>{tarefa.priority}</span>
-                      <button onClick={() => abrirEdicaoTarefa(tarefa)} className={`p-1 hover:text-lime-500 ${t.faint}`} title="Editar">
-                        <Pencil className="w-4 h-4" />
+                      <button
+                        disabled={currentPage === 1}
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        className="px-3 py-1.5 border border-slate-300 rounded-lg bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 font-semibold transition shadow-sm"
+                      >
+                        Anterior
                       </button>
-                      <button onClick={() => deleteTask(tarefa.id)} className={`p-1 hover:text-red-400 ${t.faint}`} title="Excluir">
-                        <Trash2 className="w-4 h-4" />
+
+                      <div className="px-2 font-medium">
+                        Página <span className="font-bold text-emerald-800">{currentPage}</span> de <span className="font-bold text-slate-800">{totalPages}</span>
+                      </div>
+
+                      <button
+                        disabled={currentPage === totalPages}
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        className="px-3 py-1.5 border border-slate-300 rounded-lg bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 font-semibold transition shadow-sm"
+                      >
+                        Próxima
                       </button>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
-        {/* ==================== ABA 3: NOTAS & SISTEMAS ==================== */}
-        {activeTab === 'notas' && (
-          <section className={`border rounded-xl p-4 md:p-6 ${t.card}`}>
-            <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
-              <div>
-                <h2 className="text-lg font-bold">Documentação de Sistemas (SoulMV, SAW, EasyAudit)</h2>
-                <p className={`text-xs ${t.muted}`}>Guarde parâmetros, caminhos de pastas de arquivos e instruções de telas pouco utilizadas.</p>
-                <p className={`text-[11px] mt-1 ${t.faint}`}>Os anexos ficam guardados neste navegador.</p>
+                )}
               </div>
-              <button onClick={() => abrirModal('nota')} className="flex items-center gap-1.5 bg-lime-500 hover:bg-lime-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs">
-                <Plus className="w-4 h-4" /> Nova Nota de Sistema
-              </button>
             </div>
-
-            {notasFiltradas.length === 0 && (
-              <p className={`text-xs ${t.faint}`}>{termo ? 'Nenhuma nota encontrada para essa busca.' : 'Nenhuma nota cadastrada.'}</p>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {notasFiltradas.map((nota) => {
-                const anexos = nota.attachments || [];
-                const imagens = anexos.filter(ehImagem);
-                const documentos = anexos.filter((a) => !ehImagem(a));
-                return (
-                  <article key={nota.id} className={`p-4 border rounded-lg flex flex-col gap-2 ${t.sub}`}>
-                    <div className="flex justify-between items-start">
-                      <span className="text-xs font-mono bg-sky-500/20 text-sky-500 px-2 py-0.5 rounded border border-sky-500/30">
-                        {nota.system}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => abrirEdicaoNota(nota)} className={`hover:text-lime-500 ${t.faint}`} title="Editar nota">
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button onClick={() => deleteNote(nota)} className={`hover:text-red-400 ${t.faint}`} title="Excluir nota">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <h4 className={`font-bold text-sm ${t.strong}`}>{nota.title}</h4>
-
-                    {nota.path && (
-                      <p className={`text-[11px] font-mono p-1.5 rounded border break-all ${t.accent} ${t.code}`}>
-                        📁 {nota.path}
-                      </p>
-                    )}
-
-                    {nota.content && (
-                      <p className={`text-xs leading-relaxed whitespace-pre-line ${t.body}`}>{nota.content}</p>
-                    )}
-
-                    {nota.actionsTaken && (
-                      <div className="border-l-2 border-lime-500/60 pl-2.5">
-                        <p className={`text-[10px] uppercase font-bold tracking-wide mb-0.5 ${t.accent}`}>O que foi feito</p>
-                        <p className={`text-xs leading-relaxed whitespace-pre-line ${t.body}`}>{nota.actionsTaken}</p>
-                      </div>
-                    )}
-
-                    {anexos.length > 0 && (
-                      <div className="space-y-2 pt-1">
-                        <p className={`text-[10px] uppercase font-bold tracking-wide flex items-center gap-1 ${t.muted}`}>
-                          <Paperclip className="w-3 h-3" /> Anexos ({anexos.length})
-                        </p>
-                        {imagens.length > 0 && (
-                          <div className="flex flex-wrap gap-2">
-                            {imagens.map((a) => <AnexoSalvo key={a.id} anexo={a} t={t} onAbrirImagem={setImagemAberta} />)}
-                          </div>
-                        )}
-                        {documentos.length > 0 && (
-                          <div className="space-y-1">
-                            {documentos.map((a) => <AnexoSalvo key={a.id} anexo={a} t={t} onAbrirImagem={setImagemAberta} />)}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    <p className={`text-[10px] mt-auto pt-1 ${t.faint}`}>
-                      Criada em {formatarDataBR(nota.date)}{nota.updatedAt ? ` · atualizada em ${formatarDataBR(nota.updatedAt)}` : ''}
-                    </p>
-                  </article>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
-        {/* ==================== ABA 4: MATRIZ DE PROJETOS (KANBAN) ==================== */}
-        {activeTab === 'matriz' && (
-          <section className={`border rounded-xl p-4 md:p-6 ${t.card}`}>
-            <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
-              <div>
-                <h2 className="text-lg font-bold">Matriz & Acompanhamento de Projetos (Kanban)</h2>
-                <p className={`text-xs ${t.muted}`}>Acompanhe o escopo, status e avanço das demandas operacionais.</p>
-              </div>
-              <button onClick={() => abrirModal('projeto')} className="flex items-center gap-1.5 bg-lime-500 hover:bg-lime-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs">
-                <Plus className="w-4 h-4" /> Novo Projeto
-              </button>
-            </div>
-
-            {/* COLUNAS KANBAN */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {['Pendente', 'Em Andamento', 'Concluído'].map((colStatus) => {
-                const daColuna = projetosFiltrados.filter((p) => p.status === colStatus);
-                return (
-                  <div key={colStatus} className={`border rounded-xl p-4 ${t.sub}`}>
-                    <div className={`flex justify-between items-center mb-4 border-b pb-2 ${t.divider}`}>
-                      <h3 className="font-semibold text-xs flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full ${
-                          colStatus === 'Pendente' ? 'bg-amber-400' : colStatus === 'Em Andamento' ? 'bg-sky-400' : 'bg-lime-400'
-                        }`}></span>
-                        {colStatus}
-                      </h3>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono ${t.chip}`}>{daColuna.length}</span>
-                    </div>
-
-                    <div className="space-y-3">
-                      {daColuna.map((proj) => (
-                        <div key={proj.id} className={`p-3 border rounded-lg shadow space-y-2 ${t.inner}`}>
-                          <div className="flex justify-between items-start gap-2">
-                            <h4 className="font-semibold text-xs">{proj.title}</h4>
-                            <button onClick={() => deleteProject(proj.id)} className={`hover:text-red-400 ${t.faint}`} title="Excluir projeto">
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                          <span className={`text-[10px] px-2 py-0.5 rounded font-mono inline-block ${t.chip}`}>{proj.system}</span>
-
-                          {/* BARRA DE PROGRESSO */}
-                          <div className={`w-full h-1.5 rounded-full overflow-hidden ${t.track}`}>
-                            <div className="bg-lime-400 h-full transition-all" style={{ width: `${proj.progress}%` }}></div>
-                          </div>
-
-                          {/* BOTÕES DE MOVER STATUS */}
-                          <div className={`flex flex-wrap justify-end gap-1 pt-1 border-t ${t.divider}`}>
-                            {colStatus !== 'Pendente' && (
-                              <button onClick={() => moveProjectStatus(proj.id, 'Pendente')} className={`text-[10px] px-1.5 py-0.5 rounded ${t.btnSec}`}>
-                                ← Pendente
-                              </button>
-                            )}
-                            {colStatus !== 'Em Andamento' && (
-                              <button onClick={() => moveProjectStatus(proj.id, 'Em Andamento')} className={`text-[10px] text-sky-500 px-1.5 py-0.5 rounded ${t.btnSec}`}>
-                                Em Andamento
-                              </button>
-                            )}
-                            {colStatus !== 'Concluído' && (
-                              <button onClick={() => moveProjectStatus(proj.id, 'Concluído')} className={`text-[10px] px-1.5 py-0.5 rounded ${t.accent} ${t.btnSec}`}>
-                                Concluído ✓
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
+          </>
         )}
       </main>
 
-      {/* ==================== MODAL DE ADIÇÃO / EDIÇÃO ==================== */}
-      {modalKind && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex justify-center items-center p-4 z-50">
-          <div
-            onPaste={colarImagem}
-            className={`border rounded-xl p-6 w-full ${modalKind === 'nota' ? 'max-w-lg' : 'max-w-md'} max-h-[90vh] overflow-y-auto ${t.card}`}
-          >
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-base">
-                {modalKind === 'nota'
-                  ? (editingId ? 'Editar Nota de Sistema' : 'Adicionar Nota de Sistema')
-                  : modalKind === 'projeto'
-                    ? 'Novo Projeto no Kanban'
-                    : (editingId ? 'Editar Compromisso' : 'Novo Compromisso')}
+      {/* JANELA DE CONCLUSÃO DA DEMANDA / PARECER TÉCNICO */}
+      {isConclusionModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden border border-emerald-100">
+            <div className="px-6 py-4 bg-emerald-950 text-white flex justify-between items-center">
+              <h3 className="font-bold text-base flex items-center gap-2">
+                <CheckSquare className="w-5 h-5 text-emerald-400" /> Parecer de Conclusão da Demanda
               </h3>
-              <button onClick={fecharModal} title="Fechar"><X className={`w-5 h-5 ${t.muted}`} /></button>
+              <button onClick={() => setIsConclusionModalOpen(false)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            <form onSubmit={handleSubmitForm} className="space-y-4 text-xs">
-
-              {/* TÍTULO */}
-              <div>
-                <label className="block mb-1 font-semibold">Título</label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={campo('title')}
-                  className={`w-full p-2.5 rounded border focus:outline-none focus:border-lime-500 ${t.input}`}
-                  placeholder={modalKind === 'nota' ? 'Ex: Local do Log de Erros' : modalKind === 'projeto' ? 'Ex: Implantação de módulo' : 'Ex: Reunião SoulMV'}
-                  required
-                  autoFocus
-                />
+            <form onSubmit={handleSaveConclusion} className="p-6 space-y-4">
+              <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-xs text-emerald-900">
+                <span className="font-bold block">Registrando solução para:</span>
+                <span className="font-mono text-xs">{conclusionItem?.numChamado ? `NTI #${conclusionItem.numChamado}` : (conclusionItem?.codChamado || conclusionItem?.criticaErro || 'Demanda')}</span>
               </div>
 
-              {/* ----- CAMPOS DE COMPROMISSO ----- */}
-              {modalKind === 'compromisso' && (
-                <>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block mb-1 font-semibold">Categoria</label>
-                      <select value={formData.category} onChange={campo('category')} className={`w-full p-2.5 rounded border ${t.input}`}>
-                        <option value="Trabalho">Trabalho (Verde Limão)</option>
-                        <option value="Saúde">Saúde / Médico (Vermelho)</option>
-                        <option value="Ausência">Ausência de Trabalho (Vermelho)</option>
-                        <option value="Prazo">Prazo de Demanda (Laranja)</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block mb-1 font-semibold">Prioridade</label>
-                      <select value={formData.priority} onChange={campo('priority')} className={`w-full p-2.5 rounded border ${t.input}`}>
-                        <option value="Alta">Alta</option>
-                        <option value="Média">Média</option>
-                        <option value="Baixa">Baixa</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block mb-1 font-semibold">Data</label>
-                      <input type="date" value={formData.date} onChange={campo('date')} required className={`w-full p-2.5 rounded border ${t.input}`} />
-                    </div>
-                    <div>
-                      <label className="block mb-1 font-semibold">Horário <span className={`font-normal ${t.faint}`}>(opcional)</span></label>
-                      <input type="time" value={formData.time} onChange={campo('time')} className={`w-full p-2.5 rounded border ${t.input}`} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block mb-1 font-semibold">Link da Reunião (Google Meet)</label>
-                    <input
-                      type="url"
-                      value={formData.meetLink}
-                      onChange={campo('meetLink')}
-                      className={`w-full p-2.5 rounded border ${t.input}`}
-                      placeholder="https://meet.google.com/abc-defg-hij"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block mb-1 font-semibold">Informações / Observações</label>
-                    <textarea
-                      rows="3"
-                      value={formData.description}
-                      onChange={campo('description')}
-                      className={`w-full p-2.5 rounded border ${t.input}`}
-                      placeholder="Pauta, documentos necessários, contatos, número de chamado..."
-                    />
-                  </div>
-                </>
-              )}
-
-              {/* ----- CAMPOS DE NOTA DE SISTEMA ----- */}
-              {modalKind === 'nota' && (
-                <>
-                  <div>
-                    <label className="block mb-1 font-semibold">Sistema</label>
-                    <select value={formData.system} onChange={campo('system')} className={`w-full p-2.5 rounded border ${t.input}`}>
-                      {SISTEMAS.map((s) => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block mb-1 font-semibold">Caminho da Tela ou Pasta de Salvamento</label>
-                    <input
-                      type="text"
-                      value={formData.path}
-                      onChange={campo('path')}
-                      className={`w-full p-2.5 rounded border ${t.input}`}
-                      placeholder="Ex: Opções > Anexos > Pasta de Destino"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block mb-1 font-semibold">Conteúdo / Lembrete</label>
-                    <textarea
-                      rows="3"
-                      value={formData.content}
-                      onChange={campo('content')}
-                      className={`w-full p-2.5 rounded border ${t.input}`}
-                      placeholder="Para que serve, como acessar, cuidados..."
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block mb-1 font-semibold">O que foi feito</label>
-                    <textarea
-                      rows="4"
-                      value={formData.actionsTaken}
-                      onChange={campo('actionsTaken')}
-                      className={`w-full p-2.5 rounded border ${t.input}`}
-                      placeholder="Descreva o passo a passo do que foi feito: parâmetros alterados, valores antigos e novos, quem solicitou, chamado..."
-                    />
-                  </div>
-
-                  {/* ANEXOS */}
-                  <div>
-                    <label className="block mb-1 font-semibold">Anexos (imagens e documentos)</label>
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => inputArquivoRef.current?.click()}
-                      onKeyDown={(e) => e.key === 'Enter' && inputArquivoRef.current?.click()}
-                      onDragOver={(e) => { e.preventDefault(); setArrastando(true); }}
-                      onDragLeave={() => setArrastando(false)}
-                      onDrop={(e) => { e.preventDefault(); setArrastando(false); adicionarArquivos(e.dataTransfer.files); }}
-                      className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition ${arrastando ? 'border-lime-400 bg-lime-500/10' : t.drop}`}
-                    >
-                      <Upload className={`w-5 h-5 mx-auto mb-1 ${t.accent}`} />
-                      <p className="font-semibold">Clique, arraste os arquivos ou cole um print (Ctrl+V)</p>
-                      <p className={`mt-0.5 ${t.faint}`}>JPEG, PNG, PDF, DOC ou DOCX · até {TAMANHO_MAX_MB} MB cada</p>
-                    </div>
-                    <input
-                      ref={inputArquivoRef}
-                      type="file"
-                      multiple
-                      accept={ACCEPT_INPUT}
-                      className="hidden"
-                      onChange={(e) => { adicionarArquivos(e.target.files); e.target.value = ''; }}
-                    />
-
-                    {(anexosMantidos.length > 0 || arquivosNovos.length > 0) && (
-                      <ul className="mt-2 space-y-1.5">
-                        {anexosMantidos.map((a) => (
-                          <li key={a.id} className={`flex items-center gap-2 p-1.5 rounded border ${t.sub}`}>
-                            {ehImagem(a) ? <ImageIcon className="w-4 h-4 text-sky-400 shrink-0" /> : <FileIcon className="w-4 h-4 text-sky-400 shrink-0" />}
-                            <span className="truncate flex-1">{a.name}</span>
-                            <span className={t.faint}>{formatarTamanho(a.size)}</span>
-                            <button type="button" onClick={() => removerAnexoMantido(a)} className={`hover:text-red-400 ${t.faint}`} title="Remover anexo">
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </li>
-                        ))}
-                        {arquivosNovos.map((a) => (
-                          <li key={a.id} className={`flex items-center gap-2 p-1.5 rounded border ${t.sub}`}>
-                            {a.preview
-                              ? <img src={a.preview} alt="" className="w-8 h-8 rounded object-cover shrink-0" />
-                              : <FileIcon className="w-4 h-4 text-sky-400 shrink-0" />}
-                            <span className="truncate flex-1">{a.file.name}</span>
-                            <span className={t.faint}>{formatarTamanho(a.file.size)}</span>
-                            <span className="text-[10px] font-bold text-lime-500">NOVO</span>
-                            <button type="button" onClick={() => removerArquivoNovo(a.id)} className={`hover:text-red-400 ${t.faint}`} title="Remover arquivo">
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </>
-              )}
-
-              {/* ----- CAMPOS DE PROJETO ----- */}
-              {modalKind === 'projeto' && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block mb-1 font-semibold">Sistema Relacionado</label>
-                    <select value={formData.system} onChange={campo('system')} className={`w-full p-2.5 rounded border ${t.input}`}>
-                      {SISTEMAS.map((s) => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block mb-1 font-semibold">Status Inicial</label>
-                    <select value={formData.status} onChange={campo('status')} className={`w-full p-2.5 rounded border ${t.input}`}>
-                      <option value="Pendente">Pendente</option>
-                      <option value="Em Andamento">Em Andamento</option>
-                      <option value="Concluído">Concluído</option>
-                    </select>
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Nome do Solicitante *</label>
+                  <input 
+                    type="text" 
+                    required 
+                    value={conclusionForm.nomeSolicitante} 
+                    onChange={(e) => setConclusionForm({ ...conclusionForm, nomeSolicitante: e.target.value })} 
+                    className="w-full border p-2.5 rounded-lg text-sm bg-white" 
+                    placeholder="Ex: Vanessa Thaís" 
+                  />
                 </div>
-              )}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">E-mail do Solicitante *</label>
+                  <input 
+                    type="email" 
+                    required 
+                    value={conclusionForm.emailSolicitante} 
+                    onChange={(e) => setConclusionForm({ ...conclusionForm, emailSolicitante: e.target.value })} 
+                    className="w-full border p-2.5 rounded-lg text-sm bg-white" 
+                    placeholder="solicitante@hospitalunimedcaruaru.com.br" 
+                  />
+                </div>
+              </div>
 
-              {erroForm && (
-                <p className="text-red-400 flex items-start gap-1.5">
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {erroForm}
-                </p>
-              )}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Considerações da Resolução / Parecer *</label>
+                <textarea 
+                  required 
+                  rows="4" 
+                  value={conclusionForm.consideracoes} 
+                  onChange={(e) => setConclusionForm({ ...conclusionForm, consideracoes: e.target.value })} 
+                  className="w-full border p-2.5 rounded-lg text-sm" 
+                  placeholder="Descreva o que foi corrigido, ajustado ou orientado para a finalização..."
+                ></textarea>
+              </div>
 
-              <div className={`flex justify-end gap-2 pt-3 border-t ${t.divider}`}>
-                <button type="button" onClick={fecharModal} className={`px-3 py-2 rounded ${t.btnSec}`}>Cancelar</button>
-                <button type="submit" disabled={salvando} className="px-3 py-2 rounded bg-lime-500 hover:bg-lime-400 font-bold text-slate-950 disabled:opacity-60">
-                  {salvando ? 'Salvando...' : 'Salvar Item'}
+              <div className="border border-dashed border-slate-300 p-4 rounded-xl bg-slate-50">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Anexo de Comprovação (Imagem, PDF ou Word — Max 1 MB)</label>
+                <input 
+                  type="file" 
+                  accept="image/png, image/jpeg, application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
+                  onChange={handleConclusionFileChange} 
+                  className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200 cursor-pointer" 
+                />
+                {conclusionFilePreview && (
+                  <p className="mt-2 text-xs text-emerald-700 font-semibold flex items-center gap-1">
+                    <Paperclip className="w-3.5 h-3.5" /> Arquivo selecionado: {conclusionFilePreview}
+                  </p>
+                )}
+              </div>
+
+              <div className="p-3 bg-slate-100 rounded-xl space-y-2 border">
+                <span className="text-xs font-bold text-slate-700 block">Enviar Notificação de Conclusão:</span>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => triggerGmailWeb(conclusionForm.emailSolicitante, conclusionForm.nomeSolicitante, conclusionForm.consideracoes, conclusionItem)}
+                    className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition shadow-sm"
+                  >
+                    <Mail className="w-3.5 h-3.5" /> Enviar via Gmail Web
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => sendGoogleChatNotification(conclusionItem, conclusionForm.consideracoes, conclusionForm.nomeSolicitante, conclusionForm.emailSolicitante)}
+                    className="px-3 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition shadow-sm"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5 text-emerald-300" /> Enviar no Google Chat
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-3 flex justify-end gap-2 border-t">
+                <button type="button" onClick={() => setIsConclusionModalOpen(false)} className="px-4 py-2 border rounded-lg text-xs font-semibold text-slate-600">
+                  Cancelar
+                </button>
+                <button type="submit" className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow transition">
+                  Salvar e Concluir Demanda
                 </button>
               </div>
             </form>
@@ -1613,87 +1531,415 @@ export default function App() {
         </div>
       )}
 
-      {/* ==================== MODAL DETALHES DO EVENTO ==================== */}
-      {detalhe && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex justify-center items-center p-4 z-50">
-          <div className={`border rounded-xl p-6 w-full max-w-sm ${t.card}`}>
-            <div className="flex justify-between items-start mb-3">
-              <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${corDoItem(detalhe).solid}`}>
-                {detalhe.category || detalhe.type || 'Evento'}
-              </span>
-              <button onClick={() => setSelectedEventDetails(null)} title="Fechar"><X className={`w-4 h-4 ${t.muted}`} /></button>
+      {/* MODAL PARA VISUALIZAR PARECER TÉCNICO DE DEMANDA CONCLUÍDA */}
+      {viewParecerModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">
+            <div className="px-6 py-4 bg-slate-900 text-white flex justify-between items-center">
+              <h3 className="font-bold text-sm flex items-center gap-2">
+                <FileText className="w-4 h-4 text-emerald-400" /> Parecer de Conclusão Salvo
+              </h3>
+              <button onClick={() => setViewParecerModal(null)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            <h3 className={`font-bold text-base mb-2 ${detalhe.status === 'Concluído' ? 'line-through opacity-70' : ''}`}>{detalhe.title}</h3>
+            <div className="p-6 space-y-4 text-sm text-slate-700">
+              <div className="bg-slate-50 p-3 rounded-lg border text-xs space-y-1">
+                <div><strong>Solicitante:</strong> {viewParecerModal.nomeSolicitante || viewParecerModal.usuario || 'Não informado'}</div>
+                <div><strong>E-mail:</strong> {viewParecerModal.emailSolicitante || '-'}</div>
+                <div><strong>Data de Conclusão:</strong> {formatDate(viewParecerModal.dataConclusao || viewParecerModal.createdAt)}</div>
+              </div>
 
-            <div className={`space-y-2 text-xs mb-4 ${t.body}`}>
-              <p className="flex items-center gap-2">
-                <Clock className={`w-4 h-4 ${t.accent}`} />
-                {formatarDataBR(detalhe.date)}{detalhe.time ? ` às ${detalhe.time}` : ''}
-              </p>
-              {detalhe.source === 'local' && (
-                <p>Prioridade: <b>{detalhe.priority}</b> · Status: <b>{detalhe.status}</b></p>
-              )}
-              {detalhe.source === 'google' && (
-                <p className={t.faint}>Evento sincronizado do Google Agenda</p>
-              )}
-              {detalhe.meetLink && (
-                <p className="flex items-center gap-2">
-                  <Video className="w-4 h-4 text-sky-400" />
-                  <a href={detalhe.meetLink} target="_blank" rel="noreferrer" className="text-sky-500 underline font-semibold">
-                    Abrir Link do Google Meet
-                  </a>
+              <div>
+                <span className="font-bold block text-xs text-slate-500 uppercase tracking-wide mb-1">Considerações Registradas:</span>
+                <p className="bg-emerald-50/50 p-3 rounded-lg border border-emerald-200 text-slate-800 text-xs leading-relaxed">
+                  {viewParecerModal.consideracoesConclusao || 'Nenhuma consideração registrada.'}
                 </p>
-              )}
-              {detalhe.description && (
-                <div className={`p-2.5 rounded border ${t.sub}`}>
-                  <p className={`text-[10px] uppercase font-bold tracking-wide mb-1 ${t.muted}`}>Informações</p>
-                  <p className="whitespace-pre-line">{detalhe.description}</p>
+              </div>
+
+              {viewParecerModal.anexoConclusaoUrl && (
+                <div className="border border-slate-200 p-3 rounded-lg bg-slate-50 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-slate-700 truncate max-w-[200px]">{viewParecerModal.anexoConclusaoNome}</span>
+                  <button 
+                    onClick={() => handleOpenAnexo({ anexoUrl: viewParecerModal.anexoConclusaoUrl, anexoNome: viewParecerModal.anexoConclusaoNome, anexoTipo: viewParecerModal.anexoConclusaoTipo })} 
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold flex items-center gap-1 transition"
+                  >
+                    <Download className="w-3.5 h-3.5" /> Ver / Baixar
+                  </button>
                 </div>
               )}
             </div>
 
-            {detalhe.source === 'local' ? (
-              <div className="grid grid-cols-3 gap-2">
-                <button onClick={() => alternarStatusTarefa(detalhe.id)} className="py-2 rounded text-xs font-semibold bg-lime-500 hover:bg-lime-400 text-slate-950">
-                  {detalhe.status === 'Concluído' ? 'Reabrir' : 'Concluir'}
-                </button>
-                <button onClick={() => abrirEdicaoTarefa(detalhe)} className={`py-2 rounded text-xs font-semibold ${t.btnSec}`}>
-                  Editar
-                </button>
-                <button onClick={() => deleteTask(detalhe.id)} className="py-2 rounded text-xs font-semibold bg-red-500/15 text-red-500 hover:bg-red-500/25">
-                  Excluir
-                </button>
-              </div>
-            ) : (
-              <button onClick={() => setSelectedEventDetails(null)} className={`w-full py-2 text-xs rounded font-semibold ${t.btnSec}`}>
+            <div className="p-4 bg-slate-50 border-t flex justify-end">
+              <button onClick={() => setViewParecerModal(null)} className="px-4 py-2 border rounded-lg text-xs font-semibold text-slate-600">
                 Fechar
               </button>
-            )}
+            </div>
           </div>
         </div>
       )}
 
-      {/* ==================== VISUALIZAR IMAGEM ANEXADA ==================== */}
-      {imagemAberta && (
-        <div
-          className="fixed inset-0 bg-black/85 backdrop-blur-sm flex flex-col justify-center items-center p-4 z-[60]"
-          onClick={() => setImagemAberta(null)}
-        >
-          <img
-            src={imagemAberta.url}
-            alt={imagemAberta.name}
-            className="max-h-[80vh] max-w-full rounded-lg shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          />
-          <div className="flex items-center gap-3 mt-3 text-xs text-slate-200" onClick={(e) => e.stopPropagation()}>
-            <span className="truncate max-w-[60vw]">{imagemAberta.name}</span>
-            <a href={imagemAberta.url} download={imagemAberta.name} className="flex items-center gap-1 bg-lime-500 text-slate-950 font-bold px-2.5 py-1 rounded">
-              <Download className="w-3.5 h-3.5" /> Baixar
-            </a>
-            <button onClick={() => setImagemAberta(null)} className="flex items-center gap-1 bg-slate-800 px-2.5 py-1 rounded">
-              <X className="w-3.5 h-3.5" /> Fechar
-            </button>
+      {/* Modal para Visualizar Imagem do Anexo */}
+      {viewAnexo && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 bg-emerald-950 text-white flex justify-between items-center">
+              <h3 className="font-bold text-sm flex items-center gap-2">
+                <ImageIcon className="w-4 h-4 text-emerald-400" /> Visualizador de Anexo: {viewAnexo.nome}
+              </h3>
+              <button onClick={() => setViewAnexo(null)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-auto flex items-center justify-center bg-slate-100 flex-1">
+              <img src={viewAnexo.url} alt="Anexo Anexado" className="max-h-[65vh] object-contain rounded border border-slate-300 shadow-md" />
+            </div>
+
+            <div className="p-4 bg-white border-t flex justify-end gap-3">
+              <a 
+                href={viewAnexo.url} 
+                download={viewAnexo.nome || 'anexo_registro'}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition"
+              >
+                <Download className="w-4 h-4" /> Baixar Imagem
+              </a>
+              <button onClick={() => setViewAnexo(null)} className="px-4 py-2 border rounded-lg text-xs text-slate-600 font-semibold">
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Formulário de Cadastro/Edição */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden">
+            <div className="px-6 py-4 bg-emerald-900 text-white flex justify-between items-center">
+              <h3 className="font-bold text-lg">
+                {editingId ? 'Editar Registro' : 'Novo Registro'} - {activeTab === 'chamados' ? 'Chamado Interno' : activeTab === 'criticas' ? 'Crítica e Chamado NTI' : 'Pendência'}
+              </h3>
+              <button onClick={() => setIsModalOpen(false)} className="text-emerald-200 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+              
+              {/* Form Chamados Internos */}
+              {activeTab === 'chamados' && (
+                <>
+                  <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-emerald-700 uppercase tracking-wide">Código do Chamado Gerado</span>
+                      <h4 className="text-2xl font-mono font-extrabold text-emerald-950">{formData.codChamado}</h4>
+                    </div>
+                    <span className="text-xs text-emerald-800 bg-emerald-200 px-3 py-1 rounded-full font-semibold">Geração Automática</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Nome do Solicitante *</label>
+                      <input required name="nomeSolicitante" value={formData.nomeSolicitante || formData.nomeUsuario || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white" placeholder="Seu nome completo" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">E-mail do Solicitante *</label>
+                      <input required type="email" name="emailSolicitante" value={formData.emailSolicitante || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white" placeholder="seu.email@hospitalunimedcaruaru.com.br" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Setor *</label>
+                      <input required name="setor" value={formData.setor || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white" placeholder="Ex: Faturamento, Recepção, TI" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Data de Abertura *</label>
+                      <input type="date" required name="data_abertura" value={formData.data_abertura || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Título do Chamado *</label>
+                    <input required name="tituloChamado" value={formData.tituloChamado || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm font-semibold text-slate-800" placeholder="Resumo da solicitação" />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Descritivo do Chamado *</label>
+                    <textarea required name="descritivoChamado" value={formData.descritivoChamado || ''} onChange={handleInputChange} rows="4" className="w-full border p-2.5 rounded-lg text-sm" placeholder="Explique o problema ou solicitação..."></textarea>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Sistema *</label>
+                      <select required name="sistema" value={formData.sistema || 'SoulMV'} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white">
+                        <option value="SoulMV">SoulMV</option>
+                        <option value="EasyAudit">EasyAudit</option>
+                        <option value="SAW">SAW</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Tipo de Chamado *</label>
+                      <select required name="tipoChamado" value={formData.tipoChamado || 'Falha'} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white">
+                        <option value="Falha">Falha</option>
+                        <option value="Correção">Correção</option>
+                        <option value="Dúvida">Dúvida</option>
+                        <option value="Esclarecimento">Esclarecimento</option>
+                        <option value="Ajuste">Ajuste</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Chat (Contato) *</label>
+                      <input required name="chat" value={formData.chat || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Teams / WhatsApp" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Ramal *</label>
+                      <input required name="ramal" value={formData.ramal || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Ex: 4022" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Prioridade *</label>
+                      <select required name="prioridade" value={formData.prioridade || 'Média'} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white">
+                        <option value="Baixa">Baixa</option>
+                        <option value="Média">Média</option>
+                        <option value="Alta">Alta</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="border border-dashed border-emerald-300 p-4 rounded-xl bg-emerald-50/50">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Anexar Imagem (PNG/JPEG), PDF ou Word (Max 1 MB)</label>
+                    <input type="file" accept="image/png, image/jpeg, application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={handleFileChange} className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200 cursor-pointer" />
+                    {filePreview && (
+                      <p className="mt-2 text-xs text-emerald-700 font-semibold flex items-center gap-1">
+                        <Paperclip className="w-3.5 h-3.5" /> Arquivo selecionado: {filePreview}
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* Form Críticas e Erros (Chamados NTI) */}
+              {activeTab === 'criticas' && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Nº do Chamado NTI</label>
+                      <input name="numChamado" value={formData.numChamado || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm font-mono font-bold text-blue-900 bg-blue-50 border-blue-200" placeholder="Ex: 47862" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Cód. Atendimento Hospitalar</label>
+                      <input name="codAtendimento" value={formData.codAtendimento || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Ex: 4297364" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Crítica / Erro Apresentado *</label>
+                    <input required name="criticaErro" value={formData.criticaErro || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Descrição do erro ou lote travado" />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Sistema *</label>
+                      <select name="sistema" value={formData.sistema || 'SoulMV'} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white">
+                        <option value="SoulMV">SoulMV</option>
+                        <option value="Easy Audit">Easy Audit</option>
+                        <option value="SAW">SAW</option>
+                        <option value="Hardware">Hardware / Estação</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Status da NTI *</label>
+                      <select name="status" value={formData.status || 'Pendente'} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white font-semibold">
+                        <option value="Pendente">🟡 Pendente / Aberto</option>
+                        <option value="Em Andamento">🔵 Em Andamento</option>
+                        <option value="Aguardando TI">🟣 Aguardando TI</option>
+                        <option value="Aguardando Retorno">🟠 Aguardando Retorno do Usuário</option>
+                        <option value="Concluído">🟢 Concluído</option>
+                        <option value="Cancelado">⚪ Cancelado</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Data de Abertura *</label>
+                      <input type="date" required name="data_abertura" value={formData.data_abertura || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm bg-white" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Nome do Solicitante</label>
+                      <input name="nomeSolicitante" value={formData.nomeSolicitante || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Nome completo" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">E-mail do Solicitante</label>
+                      <input type="email" name="emailSolicitante" value={formData.emailSolicitante || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="solicitante@hospitalunimedcaruaru.com.br" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Empresa</label>
+                      <input name="empresa" value={formData.empresa || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Ex: Hospital" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Convênio</label>
+                      <input name="convenio" value={formData.convenio || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Ex: Unimed" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Usuário Responsável *</label>
+                      <input required name="usuario" value={formData.usuario || ''} onChange={handleInputChange} className="w-full border p-2.5 rounded-lg text-sm" placeholder="Seu nome" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Tratativa NTI / Observações</label>
+                    <textarea name="observacao" value={formData.observacao || ''} onChange={handleInputChange} rows="3" className="w-full border p-2.5 rounded-lg text-sm" placeholder="Histórico de tratativas e retornos dados..."></textarea>
+                  </div>
+                </>
+              )}
+
+              {/* Form Proced. Sem Valor */}
+              {activeTab === 'sem_valor' && (
+                <>
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Cód. Atendimento</label>
+                    <input name="codAtendimento" value={formData.codAtendimento || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm bg-white" placeholder="Ex: 1234567" />
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Profat</label>
+                      <input required name="profat" value={formData.profat || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Descrição do Procedimento</label>
+                      <input required name="descricao" value={formData.descricao || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Tabela</label>
+                      <input name="tabela" value={formData.tabela || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="Ex: CBHPM / Própria" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Data da Solicitação (Para Alerta SLA 48h)</label>
+                      <input type="datetime-local" required name="dtSolicitacao" value={formData.dtSolicitacao || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Nome do Solicitante</label>
+                      <input name="nomeSolicitante" value={formData.nomeSolicitante || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="Nome completo" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">E-mail do Solicitante</label>
+                      <input type="email" name="emailSolicitante" value={formData.emailSolicitante || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="solicitante@hospitalunimedcaruaru.com.br" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Dt da Conta</label>
+                      <input type="date" name="dtConta" value={formData.dtConta || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Empresa</label>
+                      <input name="empresa" value={formData.empresa || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Convênio</label>
+                      <input name="convenio" value={formData.convenio || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Observações / Conclusão</label>
+                    <textarea name="observacao" value={formData.observacao || ''} onChange={handleInputChange} rows="3" className="w-full border p-2 rounded text-sm"></textarea>
+                  </div>
+                </>
+              )}
+
+              {/* Form Proced. Sem TUSS */}
+              {activeTab === 'sem_tuss' && (
+                <>
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Cód. Atendimento</label>
+                    <input name="codAtendimento" value={formData.codAtendimento || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm bg-white" placeholder="Ex: 1234567" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Profat</label>
+                      <input required name="profat" value={formData.profat || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Descrição do Procedimento</label>
+                      <input required name="descricao" value={formData.descricao || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Data da Solicitação (Para Alerta SLA 24h)</label>
+                      <input type="datetime-local" required name="dtSolicitacao" value={formData.dtSolicitacao || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Tabela XML</label>
+                      <input name="tabelaXml" value={formData.tabelaXml || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Nome do Solicitante</label>
+                      <input name="nomeSolicitante" value={formData.nomeSolicitante || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="Nome completo" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">E-mail do Solicitante</label>
+                      <input type="email" name="emailSolicitante" value={formData.emailSolicitante || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="solicitante@hospitalunimedcaruaru.com.br" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">TUSS</label>
+                      <input name="tuss" value={formData.tuss || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Anvisa</label>
+                      <input name="anvisa" value={formData.anvisa || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Empresa</label>
+                      <input name="empresa" value={formData.empresa || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Convênio</label>
+                      <input name="convenio" value={formData.convenio || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" />
+                    </div>
+                  </div>
+                  <div className="border border-dashed border-blue-300 p-4 rounded-xl bg-blue-50/50">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Anexar Imagem do Mat./Med., PDF ou Word (Max 1 MB)</label>
+                    <input type="file" accept="image/png, image/jpeg, application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={handleFileChange} className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-100 file:text-blue-800 hover:file:bg-blue-200 cursor-pointer" />
+                    {filePreview && (
+                      <p className="mt-2 text-xs text-blue-700 font-semibold flex items-center gap-1">
+                        <Paperclip className="w-3.5 h-3.5" /> Arquivo selecionado: {filePreview}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Observações / Conclusão</label>
+                    <textarea name="observacao" value={formData.observacao || ''} onChange={handleInputChange} rows="3" className="w-full border p-2 rounded text-sm"></textarea>
+                  </div>
+                </>
+              )}
+
+              <div className="pt-4 flex justify-end gap-3 border-t">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border rounded-lg text-sm text-slate-600">Cancelar</button>
+                <button type="submit" className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold">
+                  {editingId ? 'Salvar Alterações' : 'Enviar Registro'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
