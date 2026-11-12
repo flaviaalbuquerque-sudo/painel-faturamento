@@ -10,9 +10,6 @@ import {
   ArrowUpDown, ArrowUp, ArrowDown, FileText, MessageCircle, ChevronDown
 } from 'lucide-react';
 
-// URL do Webhook do Google Chat (Cole aqui a URL gerada no Espaço do Google Chat)
-const GOOGLE_CHAT_WEBHOOK_URL = ""; 
-
 // Opções do Filtro Múltiplo de Status
 const STATUS_OPTIONS = [
   { value: 'Pendente', label: '🟡 Pendente / Aberto' },
@@ -85,6 +82,7 @@ export default function App() {
     emailSolicitante: '' 
   });
   const [conclusionFilePreview, setConclusionFilePreview] = useState(null);
+  const [isSendingChat, setIsSendingChat] = useState(false);
 
   // Modal para Visualizar Considerações/Parecer Salvo
   const [viewParecerModal, setViewParecerModal] = useState(null);
@@ -211,7 +209,7 @@ export default function App() {
     return () => unsubscribes.forEach(unsub => unsub());
   }, []);
 
-  // Listener para a Tabela Ativa (Com fusão garantida dos 40 chamados)
+  // Listener para a Tabela Ativa
   useEffect(() => {
     if (activeTab === 'inicio') return;
 
@@ -402,32 +400,55 @@ export default function App() {
     window.open(gmailUrl, '_blank');
   };
 
-  const sendGoogleChatNotification = async (itemRef, consideracoesTexto, nomeOverride, emailOverride) => {
-    if (!GOOGLE_CHAT_WEBHOOK_URL) {
-      alert("URL do Webhook do Google Chat não configurada no sistema. Para habilitar, insira a URL do seu espaço na linha 19 do arquivo.");
+  // Disparo de Mensagem Direta Privada (DM 1:1) via Bot Oficial do Google Cloud
+  const sendGoogleChatDM = async (itemRef, consideracoesTexto, nomeOverride, emailOverride) => {
+    const emailTarget = (emailOverride || itemRef?.emailSolicitante || '').trim();
+    const nomeTarget = (nomeOverride || itemRef?.nomeSolicitante || itemRef?.nomeUsuario || itemRef?.usuario || 'Solicitante').trim();
+
+    if (!emailTarget) {
+      alert("Por favor, preencha o e-mail do solicitante para enviar a mensagem privada.");
       return;
     }
 
-    const refCod = itemRef?.numChamado ? `NTI #${itemRef.numChamado}` : (itemRef?.codChamado || itemRef?.codAtendimento || 'Demanda');
-    const nomeFinal = nomeOverride || itemRef?.nomeSolicitante || itemRef?.nomeUsuario || itemRef?.usuario || 'Não informado';
-    const emailFinal = emailOverride || itemRef?.emailSolicitante || '';
+    const refCod = itemRef?.numChamado 
+      ? `NTI #${itemRef.numChamado}` 
+      : (itemRef?.codChamado || itemRef?.codAtendimento || itemRef?.profat || 'Demanda Faturamento');
 
-    const messageText = `🟢 *Sua solicitação foi atendida com sucesso!*\n\n` +
-      `*Demanda:* ${refCod}\n` +
-      `*Solicitante:* ${nomeFinal}${emailFinal ? ` (${emailFinal})` : ''}\n` +
-      `*Parecer Técnico:* ${consideracoesTexto || 'Concluído pelo setor de Faturamento.'}\n\n` +
-      `_Favor acessar o painel para confirmar a demanda concluída._`;
-
+    setIsSendingChat(true);
     try {
-      await fetch(GOOGLE_CHAT_WEBHOOK_URL, {
+      const response = await fetch('/api/send-chat-dm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: messageText })
+        body: JSON.stringify({
+          emailSolicitante: emailTarget,
+          nomeSolicitante: nomeTarget,
+          refDemanda: refCod,
+          parecerTexto: consideracoesTexto
+        })
       });
-      alert("✓ Notificação enviada com sucesso para o Google Chat!");
+
+      const contentType = response.headers.get('content-type') || '';
+      const data = contentType.includes('application/json') ? await response.json() : {};
+
+      if (response.ok) {
+        alert(`✓ Mensagem privada enviada com sucesso para ${emailTarget} no Google Chat!`);
+      } else {
+        const errorMsg = data.details || data.error || `Erro HTTP ${response.status} (verifique se a função /api/send-chat-dm e as variáveis da Vercel estão configuradas)`;
+        if (window.confirm(`Não foi possível enviar via Bot automático:\n${errorMsg}\n\nDeseja copiar a mensagem e abrir o chat direto (1:1) com ${emailTarget} manualmente?`)) {
+          const msgBackup = `Olá ${nomeTarget},\n\nSua solicitação (${refCod}) foi concluída pelo Faturamento!\n\nParecer: ${consideracoesTexto || 'Demanda finalizada.'}`;
+          navigator.clipboard?.writeText(msgBackup);
+          window.open(`https://chat.google.com/dm/${encodeURIComponent(emailTarget)}`, '_blank');
+        }
+      }
     } catch (err) {
-      console.error("Erro ao enviar para o Google Chat:", err);
-      alert("Não foi possível enviar a notificação para o Google Chat.");
+      console.error("Erro ao chamar API do Bot:", err);
+      if (window.confirm("Falha de conexão com a API do Bot no servidor.\n\nDeseja copiar o parecer e abrir o chat direto (1:1) com o solicitante manualmente?")) {
+        const msgBackup = `Olá ${nomeTarget},\n\nSua solicitação (${refCod}) foi concluída pelo Faturamento!\n\nParecer: ${consideracoesTexto || 'Demanda finalizada.'}`;
+        navigator.clipboard?.writeText(msgBackup);
+        window.open(`https://chat.google.com/dm/${encodeURIComponent(emailTarget)}`, '_blank');
+      }
+    } finally {
+      setIsSendingChat(false);
     }
   };
 
@@ -609,15 +630,19 @@ export default function App() {
     if (filterProfat.trim() !== '') {
       const queryStr = filterProfat.toLowerCase();
       const profatMatch = String(item.profat || '').toLowerCase().includes(queryStr) ||
+                          String(item.descricao || '').toLowerCase().includes(queryStr) ||
                           String(item.criticaErro || '').toLowerCase().includes(queryStr) ||
                           String(item.numChamado || '').toLowerCase().includes(queryStr) ||
-                          String(item.codAtendimento || '').toLowerCase().includes(queryStr);
+                          String(item.codAtendimento || '').toLowerCase().includes(queryStr) ||
+                          String(item.nomeSolicitante || '').toLowerCase().includes(queryStr) ||
+                          String(item.usuario || '').toLowerCase().includes(queryStr);
       if (!profatMatch) return false;
     }
 
     if (filterChamado.trim() !== '') {
       const chamadoMatch = String(item.codChamado || '').toLowerCase().includes(filterChamado.toLowerCase()) ||
-                           String(item.tituloChamado || '').toLowerCase().includes(filterChamado.toLowerCase());
+                           String(item.tituloChamado || '').toLowerCase().includes(filterChamado.toLowerCase()) ||
+                           String(item.nomeSolicitante || '').toLowerCase().includes(filterChamado.toLowerCase());
       if (!chamadoMatch) return false;
     }
 
@@ -637,6 +662,9 @@ export default function App() {
     if (sortConfig.key === 'data_abertura') {
       aVal = a.data_abertura || a.createdAt || '';
       bVal = b.data_abertura || b.createdAt || '';
+    } else if (sortConfig.key === 'nomeSolicitante') {
+      aVal = a.nomeSolicitante || a.nomeUsuario || a.usuario || '';
+      bVal = b.nomeSolicitante || b.nomeUsuario || b.usuario || '';
     }
 
     if (typeof aVal === 'string') aVal = aVal.toLowerCase();
@@ -1098,8 +1126,8 @@ export default function App() {
                   {activeTab === 'chamados' ? (
                     <>
                       <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">Cód. Chamado / Título</label>
-                        <input type="text" placeholder="Ex: CH-849201" value={filterChamado} onChange={(e) => setFilterChamado(e.target.value)} className="w-full border p-2 rounded-lg text-sm" />
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Cód. Chamado / Título / Solicitante</label>
+                        <input type="text" placeholder="Ex: CH-849201 ou Nome" value={filterChamado} onChange={(e) => setFilterChamado(e.target.value)} className="w-full border p-2 rounded-lg text-sm" />
                       </div>
                       <div>
                         <label className="block text-xs font-semibold text-slate-600 mb-1">Sistema</label>
@@ -1113,9 +1141,9 @@ export default function App() {
                     </>
                   ) : (
                     <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1">Buscar por Atendimento / Nº NTI / Palavra-Chave</label>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Buscar por Atendimento / Nº NTI / Solicitante</label>
                       <div className="relative">
-                        <input type="text" placeholder="Digite Nº NTI (ex: 47862) ou palavra..." value={filterProfat} onChange={(e) => setFilterProfat(e.target.value)} className="w-full border p-2 pr-8 rounded-lg text-sm" />
+                        <input type="text" placeholder="Digite Nº, procedimento ou solicitante..." value={filterProfat} onChange={(e) => setFilterProfat(e.target.value)} className="w-full border p-2 pr-8 rounded-lg text-sm" />
                         <Search className="w-4 h-4 text-slate-400 absolute right-2.5 top-2.5" />
                       </div>
                     </div>
@@ -1142,7 +1170,7 @@ export default function App() {
                       {activeTab === 'chamados' ? (
                         <>
                           <SortableHeader label="Código / Título" sortKey="tituloChamado" className="min-w-[220px]" />
-                          <SortableHeader label="Solicitante / E-mail" sortKey="nomeUsuario" className="min-w-[200px]" />
+                          <SortableHeader label="Solicitante / E-mail" sortKey="nomeSolicitante" className="min-w-[200px]" />
                           <SortableHeader label="Sistema / Tipo" sortKey="sistema" className="min-w-[140px]" />
                           <th className="p-4 whitespace-nowrap min-w-[140px]">Contato</th>
                           <SortableHeader label="Prioridade" sortKey="prioridade" className="min-w-[120px]" />
@@ -1180,7 +1208,7 @@ export default function App() {
                               <SortableHeader label="Empresa / Convênio" sortKey="empresa" className="min-w-[150px]" />
                             </>
                           )}
-                          <SortableHeader label="Usuário" sortKey="usuario" className="min-w-[120px]" />
+                          <SortableHeader label="Solicitante / Usuário" sortKey="nomeSolicitante" className="min-w-[180px]" />
                         </>
                       )}
                       <th className="p-4 text-center whitespace-nowrap min-w-[240px]">Ações</th>
@@ -1232,8 +1260,8 @@ export default function App() {
                                   <div className="font-semibold text-slate-800 text-sm">{item.tituloChamado}</div>
                                 </td>
                                 <td className="p-4">
-                                  <div className="font-medium text-slate-800">{item.nomeSolicitante || item.nomeUsuario}</div>
-                                  <div className="text-xs text-slate-500">{item.emailSolicitante || item.setor}</div>
+                                  <div className="font-medium text-slate-800">{item.nomeSolicitante || item.nomeUsuario || 'Não informado'}</div>
+                                  <div className="text-xs text-slate-500">{item.emailSolicitante || item.setor || '-'}</div>
                                 </td>
                                 <td className="p-4 whitespace-nowrap">
                                   <span className="font-medium text-slate-700">{item.sistema}</span>
@@ -1340,7 +1368,17 @@ export default function App() {
                                   </>
                                 )}
 
-                                <td className="p-4 text-xs text-slate-500 whitespace-nowrap">{item.usuario || 'Sistema'}</td>
+                                {/* COLUNA CORRIGIDA: Exibe Nome do Solicitante e E-mail */}
+                                <td className="p-4 whitespace-nowrap">
+                                  <div className="font-semibold text-slate-800 text-xs">
+                                    {item.nomeSolicitante || item.usuario || 'Não informado'}
+                                  </div>
+                                  {item.emailSolicitante && (
+                                    <div className="text-[11px] text-slate-500">
+                                      {item.emailSolicitante}
+                                    </div>
+                                  )}
+                                </td>
                               </>
                             )}
 
@@ -1495,7 +1533,7 @@ export default function App() {
               </div>
 
               <div className="p-3 bg-slate-100 rounded-xl space-y-2 border">
-                <span className="text-xs font-bold text-slate-700 block">Enviar Notificação de Conclusão:</span>
+                <span className="text-xs font-bold text-slate-700 block">Enviar Notificação Individual de Conclusão:</span>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
@@ -1507,10 +1545,12 @@ export default function App() {
 
                   <button
                     type="button"
-                    onClick={() => sendGoogleChatNotification(conclusionItem, conclusionForm.consideracoes, conclusionForm.nomeSolicitante, conclusionForm.emailSolicitante)}
-                    className="px-3 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition shadow-sm"
+                    disabled={isSendingChat}
+                    onClick={() => sendGoogleChatDM(conclusionItem, conclusionForm.consideracoes, conclusionForm.nomeSolicitante, conclusionForm.emailSolicitante)}
+                    className="px-3 py-1.5 bg-emerald-800 hover:bg-emerald-900 disabled:opacity-50 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition shadow-sm"
                   >
-                    <MessageCircle className="w-3.5 h-3.5 text-emerald-300" /> Enviar no Google Chat
+                    <MessageCircle className="w-3.5 h-3.5 text-emerald-300" /> 
+                    {isSendingChat ? 'Enviando no Chat...' : 'Enviar Mensagem Privada no Chat'}
                   </button>
                 </div>
               </div>
@@ -1828,12 +1868,12 @@ export default function App() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1">Nome do Solicitante</label>
-                      <input name="nomeSolicitante" value={formData.nomeSolicitante || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="Nome completo" />
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Nome do Solicitante *</label>
+                      <input required name="nomeSolicitante" value={formData.nomeSolicitante || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="Nome completo" />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1">E-mail do Solicitante</label>
-                      <input type="email" name="emailSolicitante" value={formData.emailSolicitante || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="solicitante@hospitalunimedcaruaru.com.br" />
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">E-mail do Solicitante *</label>
+                      <input required type="email" name="emailSolicitante" value={formData.emailSolicitante || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="solicitante@hospitalunimedcaruaru.com.br" />
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-4">
@@ -1886,12 +1926,12 @@ export default function App() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1">Nome do Solicitante</label>
-                      <input name="nomeSolicitante" value={formData.nomeSolicitante || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="Nome completo" />
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Nome do Solicitante *</label>
+                      <input required name="nomeSolicitante" value={formData.nomeSolicitante || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="Nome completo" />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1">E-mail do Solicitante</label>
-                      <input type="email" name="emailSolicitante" value={formData.emailSolicitante || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="solicitante@hospitalunimedcaruaru.com.br" />
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">E-mail do Solicitante *</label>
+                      <input required type="email" name="emailSolicitante" value={formData.emailSolicitante || ''} onChange={handleInputChange} className="w-full border p-2 rounded text-sm" placeholder="solicitante@hospitalunimedcaruaru.com.br" />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
